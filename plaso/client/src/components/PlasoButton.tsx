@@ -17,7 +17,7 @@ interface PlasoButtonProps extends TouchableOpacityProps {
   title: string;
   variant?: ButtonVariant;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
   textStyle?: TextStyle;
 }
 

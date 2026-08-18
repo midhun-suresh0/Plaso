@@ -145,6 +145,46 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </PlasoCard>
 
+          {((user?.role as any) === 'BUSINESS_OWNER' as any || (user?.role as any) === 'ADMIN' as any) && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Business Management</Text>
+              </View>
+              <PlasoCard glass style={styles.settingsCard}>
+                {(user?.role as any) === 'BUSINESS_OWNER' as any && (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.settingRow} 
+                      onPress={() => navigation.navigate('BusinessDashboard')}
+                    >
+                      <Ionicons name="storefront-outline" size={20} color={theme.colors.primary} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingLabel}>My Business</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                )}
+                
+                {(user?.role as any) === 'ADMIN' as any && (
+                  <>
+                    {(user?.role as any) === 'BUSINESS_OWNER' as any && <View style={styles.divider} />}
+                    <TouchableOpacity 
+                      style={styles.settingRow} 
+                      onPress={() => navigation.navigate('AdminBusinesses')}
+                    >
+                      <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.primary} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingLabel}>Review Businesses</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </PlasoCard>
+            </>
+          )}
+
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Activity</Text>
           </View>

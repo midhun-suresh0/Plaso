@@ -3,6 +3,8 @@ import { LocationPrivacy } from './user.model';
 
 export interface IPost extends Document {
   author: mongoose.Types.ObjectId;
+  authorType?: 'USER' | 'BUSINESS';
+  business?: mongoose.Types.ObjectId;
   content?: string;
   media?: string[];
   visibility: LocationPrivacy;
@@ -23,6 +25,15 @@ const PostSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    authorType: {
+      type: String,
+      enum: ['USER', 'BUSINESS'],
+      default: 'USER',
+    },
+    business: {
+      type: Schema.Types.ObjectId,
+      ref: 'Business',
     },
     content: {
       type: String,

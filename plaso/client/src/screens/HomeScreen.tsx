@@ -215,6 +215,25 @@ export default function HomeScreen({ navigation }: Props) {
     );
   };
 
+  const renderBusinessBanner = () => {
+    return (
+      <TouchableOpacity 
+        style={styles.businessBanner}
+        onPress={() => navigation.navigate('BusinessDiscovery')}
+        activeOpacity={0.8}
+      >
+        <View style={styles.businessBannerContent}>
+          <Ionicons name="storefront" size={24} color={theme.colors.surface} />
+          <View style={styles.businessBannerTextContainer}>
+            <Text style={styles.businessBannerTitle}>Explore Local Businesses</Text>
+            <Text style={styles.businessBannerDesc}>Discover cafes, shops, and services near you</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.surface} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <PlasoScreen>
       <View style={styles.container}>
@@ -225,7 +244,12 @@ export default function HomeScreen({ navigation }: Props) {
           <FeedSkeleton />
         ) : (
           <FlatList
-            ListHeaderComponent={renderSuggestions}
+            ListHeaderComponent={
+              <>
+                {renderBusinessBanner()}
+                {renderSuggestions()}
+              </>
+            }
             data={posts}
           keyExtractor={item => item._id}
           renderItem={({ item }) => (
@@ -349,11 +373,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.text,
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
+    marginLeft: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   suggestionsScroll: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xs,
+    gap: theme.spacing.md,
   },
+  businessBanner: {
+    backgroundColor: theme.colors.primary,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.md,
+    borderRadius: theme.radii.lg,
+  },
+  businessBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  businessBannerTextContainer: {
+    flex: 1,
+    marginLeft: theme.spacing.md,
+  },
+  businessBannerTitle: {
+    color: theme.colors.surface,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  businessBannerDesc: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 2,
+  }
 });

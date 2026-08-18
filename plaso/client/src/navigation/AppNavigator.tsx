@@ -17,6 +17,12 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import SavedPostsScreen from '../screens/SavedPostsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SearchScreen from '../screens/SearchScreen';
+import BusinessDiscoveryScreen from '../screens/BusinessDiscoveryScreen';
+import BusinessProfileScreen from '../screens/BusinessProfileScreen';
+import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
+import EditBusinessScreen from '../screens/EditBusinessScreen';
+import AdminBusinessesScreen from '../screens/AdminBusinessesScreen';
+import AdminBusinessDetailsScreen from '../screens/AdminBusinessDetailsScreen';
 import { colors, theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -100,6 +106,36 @@ export default function AppNavigator(): React.JSX.Element {
             <Stack.Screen
               name="Search"
               component={SearchScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessDiscovery"
+              component={BusinessDiscoveryScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessProfile"
+              component={BusinessProfileScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessDashboard"
+              component={BusinessDashboardScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="EditBusiness"
+              component={EditBusinessScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminBusinesses"
+              component={AdminBusinessesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminBusinessDetails"
+              component={AdminBusinessDetailsScreen}
               options={{ headerShown: false }}
             />
           </>

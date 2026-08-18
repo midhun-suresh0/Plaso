@@ -32,10 +32,16 @@ export type RootStackParamList = {
   ResetPassword: { email: string };
   Profile: undefined;
   EditProfile: undefined;
-  CreatePost: undefined;
+  CreatePost: { asBusiness?: boolean } | undefined;
   PostDetails: { post: any };
   UserProfile: { userId: string };
   SavedPosts: undefined;
   Notifications: undefined;
   Search: undefined;
+  BusinessDiscovery: undefined;
+  BusinessProfile: { businessId: string };
+  BusinessDashboard: undefined;
+  EditBusiness: undefined;
+  AdminBusinesses: undefined;
+  AdminBusinessDetails: { businessId: string };
 };

@@ -11,6 +11,7 @@ import commentRoutes from './routes/comment.routes';
 import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
 import discoveryRoutes from './routes/discovery.routes';
+import businessRoutes from './routes/business.routes';
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/businesses', businessRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

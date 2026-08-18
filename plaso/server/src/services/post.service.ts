@@ -13,13 +13,15 @@ export const postService = {
    */
   async createPost(
     authorId: string,
-    data: { content?: string; media?: string[]; visibility: LocationPrivacy; location?: { longitude: number; latitude: number }; locationName?: string }
+    data: { content?: string; media?: string[]; visibility: LocationPrivacy; location?: { longitude: number; latitude: number }; locationName?: string; authorType?: 'USER' | 'BUSINESS'; business?: string }
   ) {
     const postData: any = {
       author: authorId,
       visibility: data.visibility,
     };
 
+    if (data.authorType) postData.authorType = data.authorType;
+    if (data.business) postData.business = data.business;
     if (data.content) postData.content = data.content;
     if (data.media && data.media.length > 0) postData.media = data.media;
 
@@ -125,6 +127,23 @@ export const postService = {
 
     pipeline.push({ $unwind: '$authorInfo' });
 
+    // Lookup business details if it's a business post
+    pipeline.push({
+      $lookup: {
+        from: 'businesses',
+        localField: 'business',
+        foreignField: '_id',
+        as: 'businessInfo'
+      }
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: '$businessInfo',
+        preserveNullAndEmptyArrays: true
+      }
+    });
+
     // Project needed fields and sanitize distance
     pipeline.push({
       $project: {
@@ -136,6 +155,7 @@ export const postService = {
         likeCount: 1,
         commentCount: 1,
         createdAt: 1,
+        authorType: 1,
         distanceKm: {
           $cond: {
             if: { $gt: ['$rawDistance', null] },
@@ -150,6 +170,18 @@ export const postService = {
           profileImage: '$authorInfo.profileImage',
           isBusiness: { $eq: ['$authorInfo.role', UserRole.BUSINESS_OWNER] },
           isVerified: '$authorInfo.isVerified'
+        },
+        business: {
+          $cond: {
+            if: { $eq: ['$authorType', 'BUSINESS'] },
+            then: {
+              _id: '$businessInfo._id',
+              name: '$businessInfo.name',
+              logo: '$businessInfo.logo',
+              category: '$businessInfo.category'
+            },
+            else: null
+          }
         }
       }
     });
@@ -253,6 +285,9 @@ export const postService = {
     if (targetUserId !== currentUserId) {
       query.visibility = { $in: [LocationPrivacy.PUBLIC, LocationPrivacy.NEARBY] };
     }
+    
+    // Only fetch USER posts for the user profile, to separate from their business posts if they have a business
+    query.authorType = 'USER';
 
     const postsQuery = await Post.find(query)
       .sort({ createdAt: -1 })
@@ -299,8 +334,58 @@ export const postService = {
   },
 
   /**
-   * Get single post
+   * Get posts by business ID
    */
+  async getBusinessPosts(businessId: string, currentUserId: string, page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const query: any = { 
+      business: businessId,
+      authorType: 'BUSINESS',
+      visibility: { $in: [LocationPrivacy.PUBLIC, LocationPrivacy.NEARBY] }
+    };
+
+    const postsQuery = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('author', 'name username profileImage role isVerified')
+      .populate('business', 'name logo category')
+      .lean();
+
+    const totalCount = await Post.countDocuments(query);
+
+    let posts = postsQuery as any[];
+
+    if (posts.length > 0) {
+      const postIds = posts.map(p => p._id);
+      
+      const [likes, saves] = await Promise.all([
+        PostLike.find({ post: { $in: postIds }, user: currentUserId }).lean(),
+        SavedPost.find({ post: { $in: postIds }, user: currentUserId }).lean()
+      ]);
+      
+      const likedPostIds = new Set(likes.map(l => l.post.toString()));
+      const savedPostIds = new Set(saves.map(s => s.post.toString()));
+      
+      posts = posts.map(p => ({
+        ...p,
+        isLiked: likedPostIds.has(p._id.toString()),
+        isSaved: savedPostIds.has(p._id.toString())
+      }));
+    }
+
+    return {
+      posts,
+      page,
+      limit,
+      totalCount,
+      hasMore: (skip + posts.length) < totalCount
+    };
+  },
+
+  /**
+   * Get single post by ID  */
   async getPostById(postId: string, userId: string) {
     const post = await Post.findById(postId).populate('author', 'name username profileImage').lean();
     if (!post) throw new Error('Post not found');
