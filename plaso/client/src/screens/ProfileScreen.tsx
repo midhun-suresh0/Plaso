@@ -179,6 +179,17 @@ export default function ProfileScreen({ navigation }: Props) {
                         <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
                       </View>
                     </TouchableOpacity>
+                    <View style={styles.divider} />
+                    <TouchableOpacity 
+                      style={styles.settingRow} 
+                      onPress={() => navigation.navigate('AdminListings')}
+                    >
+                      <Ionicons name="basket-outline" size={20} color={theme.colors.primary} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingLabel}>Moderate Listings</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
                   </>
                 )}
               </PlasoCard>

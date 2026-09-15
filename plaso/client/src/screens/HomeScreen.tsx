@@ -215,6 +215,25 @@ export default function HomeScreen({ navigation }: Props) {
     );
   };
 
+  const renderMarketplaceBanner = () => {
+    return (
+      <TouchableOpacity 
+        style={[styles.businessBanner, { backgroundColor: '#FF6B6B' }]} // Using a distinct color for Marketplace
+        onPress={() => navigation.navigate('Marketplace')}
+        activeOpacity={0.8}
+      >
+        <View style={styles.businessBannerContent}>
+          <Ionicons name="basket" size={24} color={theme.colors.surface} />
+          <View style={styles.businessBannerTextContainer}>
+            <Text style={styles.businessBannerTitle}>Local Marketplace</Text>
+            <Text style={styles.businessBannerDesc}>Buy and sell products and services nearby</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.surface} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   const renderBusinessBanner = () => {
     return (
       <TouchableOpacity 
@@ -246,6 +265,7 @@ export default function HomeScreen({ navigation }: Props) {
           <FlatList
             ListHeaderComponent={
               <>
+                {renderMarketplaceBanner()}
                 {renderBusinessBanner()}
                 {renderSuggestions()}
               </>

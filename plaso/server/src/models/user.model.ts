@@ -131,7 +131,6 @@ const UserSchema: Schema = new Schema(
 
 // Indexes
 UserSchema.index({ location: '2dsphere' });
-UserSchema.index({ username: 1 }, { unique: true, sparse: true });
 UserSchema.index({ name: 1 }); // Index for name searches
 
 // Prevent returning passwordHash in JSON by default if we ever call toJSON on the model

@@ -12,11 +12,19 @@ import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
 import discoveryRoutes from './routes/discovery.routes';
 import businessRoutes from './routes/business.routes';
+import marketplaceRoutes from './routes/marketplace.routes';
+import cartRoutes from './routes/cart.routes';
+import orderRoutes from './routes/order.routes';
+import paymentRoutes from './routes/payment.routes';
 
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = buf.toString();
+  }
+}));
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
@@ -31,6 +39,10 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/businesses', businessRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

@@ -11,12 +11,14 @@ export class NotificationService {
     type,
     post,
     comment,
+    order,
   }: {
     recipient: string;
     sender: string;
     type: NotificationType;
     post?: string;
     comment?: string;
+    order?: string;
   }) {
     // 1. Prevent self-notifications
     if (recipient === sender) {
@@ -39,6 +41,7 @@ export class NotificationService {
       type,
       post,
       comment,
+      order,
     });
 
     await notification.save();

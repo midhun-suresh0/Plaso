@@ -119,19 +119,24 @@ const BusinessDashboardScreen = () => {
             <PlasoButton 
               title="Edit Profile" 
               variant="secondary"
-              
               onPress={() => navigation.navigate('EditBusiness')} 
               style={styles.actionButton}
             />
             <PlasoButton 
               title="Create Post" 
               variant="primary"
-              
               onPress={() => navigation.navigate('CreatePost', { asBusiness: true })} 
               disabled={business.verificationStatus !== 'APPROVED'}
               style={styles.actionButton}
             />
           </View>
+          <PlasoButton 
+            title="Manage Listings" 
+            variant="secondary"
+            onPress={() => navigation.navigate('BusinessListings')} 
+            disabled={business.verificationStatus !== 'APPROVED'}
+            style={{ marginTop: theme.spacing.md }}
+          />
         </PlasoCard>
 
         {/* Stats Grid */}

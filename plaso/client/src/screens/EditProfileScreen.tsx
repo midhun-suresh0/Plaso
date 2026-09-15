@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -78,18 +79,57 @@ export default function EditProfileScreen({ navigation }: Props) {
   const handleUpdateLocation = async () => {
     setLocationLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Permission to access location was denied');
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        Alert.alert('Location Disabled', 'Location services are turned off. Please enable location services and try again.');
         setLocationLoading(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      setCoordinates([location.coords.longitude, location.coords.latitude]);
-      Alert.alert('Success', 'Location updated locally. Save profile to apply changes.');
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const request = await Location.requestForegroundPermissionsAsync();
+        status = request.status;
+      }
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Location permission is required to set your location.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        setLocationLoading(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude, longitude } = location.coords;
+
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        Alert.alert('Error', 'Invalid coordinates received.');
+        setLocationLoading(false);
+        return;
+      }
+
+      setCoordinates([longitude, latitude]);
+
+      const response = await userApi.updateLocation({ latitude, longitude });
+
+      if (response.success) {
+        await checkAuth(); // Refresh user in context
+        Alert.alert('Success', 'Location updated successfully.');
+      } else {
+        Alert.alert('Error', response.message || 'Unable to connect to the server.');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch location.');
+      console.error(error);
+      Alert.alert('Error', 'Unable to detect your location. Please try again.');
     } finally {
       setLocationLoading(false);
     }
@@ -103,12 +143,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      // Step 1: Update Location
-      if (coordinates) {
-        await userApi.updateLocation({ longitude: coordinates[0], latitude: coordinates[1] });
-      }
-
-      // Step 2: Update Profile
+      // Step 1: Update Profile
       const radiusNum = parseInt(discoveryRadius, 10);
       
       const response = await userApi.updateProfile({
@@ -222,17 +257,17 @@ export default function EditProfileScreen({ navigation }: Props) {
                 <Ionicons name="location" size={24} color={coordinates ? theme.colors.success : theme.colors.textSecondary} />
                 <View style={styles.locationTextContainer}>
                   <Text style={styles.locationStatus}>
-                    {coordinates ? 'Location Set' : 'Location Not Set'}
+                    {coordinates ? 'Location set' : 'Location not set'}
                   </Text>
                   {coordinates && (
                     <Text style={styles.locationCoords}>
-                      {coordinates[1].toFixed(4)}, {coordinates[0].toFixed(4)}
+                      Current location detected
                     </Text>
                   )}
                 </View>
               </View>
               <PlasoButton 
-                title={coordinates ? "Update" : "Set Location"} 
+                title="Use Current Location" 
                 variant="secondary"
                 onPress={handleUpdateLocation}
                 loading={locationLoading}

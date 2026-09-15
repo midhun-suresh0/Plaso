@@ -23,6 +23,9 @@ interface EnvConfig {
   // Authentication
   jwtSecret: string;
   jwtExpiresIn: string;
+  RAZORPAY_KEY_ID: string;
+  RAZORPAY_KEY_SECRET: string;
+  RAZORPAY_WEBHOOK_SECRET: string;
 }
 
 const env: EnvConfig = {
@@ -44,6 +47,18 @@ const env: EnvConfig = {
   // Authentication
   jwtSecret: process.env.JWT_SECRET || 'fallback_secret_for_dev',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // Razorpay
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || '',
 };
+
+if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_WEBHOOK_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ WARNING: Razorpay secrets are missing in production. Payments will fail.');
+  } else {
+    console.warn('⚠️ WARNING: Razorpay secrets are missing. Running without real payment capabilities.');
+  }
+}
 
 export default env;

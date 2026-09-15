@@ -8,8 +8,11 @@ import { PlasoButton } from '../components/PlasoButton';
 import { theme } from '../constants/theme';
 import { businessApi } from '../services/businessApi';
 import { getCategoryLabel, getCategoryIcon } from '../constants/businessCategories';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { marketplaceApi } from '../services/marketplaceApi';
+import { MarketplaceListing } from '../types/marketplace';
+import { ListingCard } from '../components/ListingCard';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'BusinessProfile'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -21,6 +24,7 @@ const BusinessProfileScreen = () => {
   const { user } = useAuth();
 
   const [business, setBusiness] = useState<any>(null);
+  const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false); // Placeholder for follow logic
 
@@ -31,12 +35,20 @@ const BusinessProfileScreen = () => {
   const fetchBusiness = async () => {
     try {
       setLoading(true);
-      const data = await businessApi.getBusinessById(businessId);
-      if ((data as any).success) {
-        setBusiness((data as any).data);
+      const [businessData, listingsData] = await Promise.all([
+        businessApi.getBusinessById(businessId),
+        marketplaceApi.getBusinessListings(businessId, 1, 5) // fetch recent 5 listings
+      ]);
+      
+      if ((businessData as any).success) {
+        setBusiness((businessData as any).data);
+      }
+      
+      if (listingsData.success && listingsData.data) {
+        setListings(listingsData.data.listings);
       }
     } catch (error) {
-      console.error('Error fetching business:', error);
+      console.error('Error fetching business or listings:', error);
     } finally {
       setLoading(false);
     }
@@ -202,8 +214,28 @@ const BusinessProfileScreen = () => {
           </View>
         )}
 
+        {/* Marketplace Listings Section */}
+        {listings.length > 0 && (
+          <View style={[styles.section, { paddingRight: 0 }]}>
+            <View style={[styles.titleActionRow, { paddingRight: theme.spacing.lg }]}>
+              <Text style={styles.sectionTitle}>Products & Services</Text>
+              {/* Future feature: View All page for business listings */}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: theme.spacing.lg }}>
+              {listings.map(listing => (
+                <ListingCard 
+                  key={listing._id}
+                  listing={listing}
+                  onPress={(l) => navigation.navigate('ListingDetails', { listingId: l._id })}
+                  style={styles.horizontalListingCard}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Posts Section (Placeholder for now) */}
-        <View style={styles.section}>
+        <View style={[styles.section, { paddingRight: theme.spacing.lg }]}>
           <Text style={styles.sectionTitle}>Posts</Text>
           <View style={styles.emptyPostsContainer}>
             <Text style={styles.emptyText}>No posts yet.</Text>
@@ -358,6 +390,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+  },
+  horizontalListingCard: {
+    width: 250,
+    marginRight: theme.spacing.md,
   }
 });
 

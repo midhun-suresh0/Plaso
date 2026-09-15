@@ -23,6 +23,18 @@ import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import EditBusinessScreen from '../screens/EditBusinessScreen';
 import AdminBusinessesScreen from '../screens/AdminBusinessesScreen';
 import AdminBusinessDetailsScreen from '../screens/AdminBusinessDetailsScreen';
+import MarketplaceScreen from '../screens/MarketplaceScreen';
+import ListingDetailsScreen from '../screens/ListingDetailsScreen';
+import CreateListingScreen from '../screens/CreateListingScreen';
+import EditListingScreen from '../screens/EditListingScreen';
+import BusinessListingsScreen from '../screens/BusinessListingsScreen';
+import AdminListingsScreen from '../screens/AdminListingsScreen';
+import CartScreen from '../screens/CartScreen';
+import CheckoutScreen from '../screens/CheckoutScreen';
+import MyOrdersScreen from '../screens/MyOrdersScreen';
+import OrderDetailsScreen from '../screens/OrderDetailsScreen';
+import BusinessOrdersScreen from '../screens/BusinessOrdersScreen';
+import AdminOrdersScreen from '../screens/AdminOrdersScreen';
 import { colors, theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -136,6 +148,66 @@ export default function AppNavigator(): React.JSX.Element {
             <Stack.Screen
               name="AdminBusinessDetails"
               component={AdminBusinessDetailsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Marketplace"
+              component={MarketplaceScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ListingDetails"
+              component={ListingDetailsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateListing"
+              component={CreateListingScreen}
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="EditListing"
+              component={EditListingScreen}
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="BusinessListings"
+              component={BusinessListingsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminListings"
+              component={AdminListingsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Cart"
+              component={CartScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Checkout"
+              component={CheckoutScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="MyOrders"
+              component={MyOrdersScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="OrderDetails"
+              component={OrderDetailsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessOrders"
+              component={BusinessOrdersScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminOrders"
+              component={AdminOrdersScreen}
               options={{ headerShown: false }}
             />
           </>

@@ -1,6 +1,7 @@
 /**
  * Shared TypeScript types for the Plaso mobile app.
  */
+import { MarketplaceListing } from './marketplace';
 
 /**
  * Standard API response from the Plaso backend.
@@ -9,6 +10,16 @@ export interface ApiResponse<T = undefined> {
   success: boolean;
   message: string;
   data?: T;
+}
+
+export interface PaginatedResponse<T> {
+  listings: T[];
+  pagination: {
+    total: number;
+    pages: number;
+    current: number;
+    limit: number;
+  };
 }
 
 /**
@@ -44,4 +55,20 @@ export type RootStackParamList = {
   EditBusiness: undefined;
   AdminBusinesses: undefined;
   AdminBusinessDetails: { businessId: string };
+  
+  // Marketplace Routes
+  Marketplace: undefined;
+  ListingDetails: { listingId: string };
+  CreateListing: { businessId: string };
+  EditListing: { listing: MarketplaceListing };
+  BusinessListings: undefined;
+  AdminListings: undefined;
+  
+  // Order & Cart Routes
+  Cart: undefined;
+  Checkout: undefined;
+  MyOrders: undefined;
+  OrderDetails: { orderId: string };
+  BusinessOrders: { businessId: string };
+  AdminOrders: undefined;
 };
