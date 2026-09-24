@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { postController } from '../controllers/post.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { upload } from '../middleware/upload';
 
 const router = Router();
 
 // Apply auth middleware to all post routes
 router.use(authenticate);
 
-router.post('/', postController.createPost);
+router.post('/', upload.array('media', 5), postController.createPost);
 router.get('/feed', postController.getFeed);
 router.get('/user/:userId', postController.getUserPosts);
 router.get('/saved', postController.getSavedPosts); // Using /saved for saved posts

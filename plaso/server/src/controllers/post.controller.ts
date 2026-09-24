@@ -7,6 +7,20 @@ export const postController = {
     try {
       const userId = (req as any).user.userId;
       const data = req.body;
+      
+      // Handle file uploads
+      if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        data.media = req.files.map(file => `/uploads/posts/${file.filename}`);
+      }
+      
+      // Handle location reconstruction if sent via FormData
+      if (data['location[longitude]'] && data['location[latitude]']) {
+        data.location = {
+          longitude: parseFloat(data['location[longitude]']),
+          latitude: parseFloat(data['location[latitude]']),
+        };
+      }
+      
       const post = await postService.createPost(userId, data);
       res.status(HttpStatus.CREATED).json({ success: true, data: post });
     } catch (error: any) {
@@ -23,7 +37,7 @@ export const postController = {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const type = (req.query.type as string) === 'nearby' ? 'nearby' : 'home';
-      
+
       const feed = await postService.getFeed(userId, page, limit, type);
       res.json({ success: true, data: feed });
     } catch (error: any) {
@@ -51,7 +65,7 @@ export const postController = {
       const targetUserId = req.params.userId as string;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      
+
       const result = await postService.getUserPosts(targetUserId, currentUserId, page, limit);
       res.json({ success: true, data: result });
     } catch (error: any) {
@@ -100,7 +114,7 @@ export const postController = {
       const postId = req.params.id as string;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      
+
       const comments = await postService.getComments(postId, page, limit);
       res.json({ success: true, data: comments });
     } catch (error: any) {
@@ -113,7 +127,7 @@ export const postController = {
       const userId = (req as any).user.userId;
       const postId = req.params.id as string;
       const { content } = req.body;
-      
+
       if (!content || !content.trim()) {
         return next(new AppError('Comment cannot be empty', HttpStatus.BAD_REQUEST));
       }
@@ -144,7 +158,7 @@ export const postController = {
       const userId = (req as any).user.userId;
       const commentId = req.params.id as string;
       const { content } = req.body;
-      
+
       if (!content || !content.trim()) {
         return next(new AppError('Comment cannot be empty', HttpStatus.BAD_REQUEST));
       }
@@ -186,7 +200,7 @@ export const postController = {
       const userId = (req as any).user.userId;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      
+
       const savedPosts = await postService.getSavedPosts(userId, page, limit);
       res.json({ success: true, data: savedPosts });
     } catch (error: any) {

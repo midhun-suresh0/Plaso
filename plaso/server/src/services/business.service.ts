@@ -1,4 +1,5 @@
 import Business, { BusinessStatus, IBusiness } from '../models/business.model';
+import User, { UserRole } from '../models/user.model';
 import { AppError, HttpStatus } from '../types';
 
 export class BusinessService {
@@ -8,7 +9,7 @@ export class BusinessService {
   static async createBusiness(ownerId: string, data: Partial<IBusiness>): Promise<IBusiness> {
     const existingBusiness = await Business.findOne({ owner: ownerId });
     if (existingBusiness) {
-      throw new AppError('You already own a business', HttpStatus.BAD_REQUEST);
+      return this.updateBusiness(ownerId, data);
     }
 
     // Ensure slug is unique, simple slugification
@@ -30,6 +31,13 @@ export class BusinessService {
     });
 
     await business.save();
+    
+    // Upgrade user role to BUSINESS_OWNER only if they are a regular USER
+    const user = await User.findById(ownerId);
+    if (user && user.role === UserRole.USER) {
+      await User.findByIdAndUpdate(ownerId, { role: UserRole.BUSINESS_OWNER });
+    }
+
     return business;
   }
 

@@ -19,7 +19,9 @@ import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoButton } from '../components/PlasoButton';
 import { marketplaceApi } from '../services/marketplaceApi';
 import { cartApi } from '../services/api/cartApi';
+import { reviewApi } from '../services/api/reviewApi';
 import { MarketplaceListing, ListingType, PriceType, AvailabilityStatus } from '../types/marketplace';
+import { Review, ReviewStats } from '../types/review';
 import { getMarketplaceCategoryLabel } from '../constants/marketplaceCategories';
 
 type RouteProps = RouteProp<RootStackParamList, 'ListingDetails'>;
@@ -32,20 +34,33 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
   const { listingId } = route.params;
 
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [stats, setStats] = useState<ReviewStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    fetchListing();
+    fetchListingData();
   }, [listingId]);
 
-  const fetchListing = async () => {
+  const fetchListingData = async () => {
     try {
       setLoading(true);
-      const response = await marketplaceApi.getListingById(listingId);
-      if (response.success && response.data) {
-        setListing(response.data);
+      const [listingRes, statsRes, reviewsRes] = await Promise.all([
+        marketplaceApi.getListingById(listingId),
+        reviewApi.getListingRatingStats(listingId).catch(() => null),
+        reviewApi.getListingReviews(listingId, 1, 3).catch(() => null)
+      ]);
+      
+      if (listingRes.success && listingRes.data) {
+        setListing(listingRes.data);
+      }
+      if (statsRes?.success && statsRes.data) {
+        setStats(statsRes.data);
+      }
+      if (reviewsRes?.success && reviewsRes.data) {
+        setReviews(reviewsRes.data.reviews);
       }
     } catch (error) {
       console.error('Failed to fetch listing details', error);
@@ -125,14 +140,14 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
   return (
     <PlasoScreen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Image Gallery */}
         <View style={styles.imageGalleryContainer}>
           {listing.images && listing.images.length > 0 ? (
             <>
-              <ScrollView 
-                horizontal 
-                pagingEnabled 
+              <ScrollView
+                horizontal
+                pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onScroll={(e) => {
                   const x = e.nativeEvent.contentOffset.x;
@@ -144,14 +159,14 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
                   <Image key={idx} source={{ uri: img }} style={styles.mainImage} resizeMode="cover" />
                 ))}
               </ScrollView>
-              
+
               {/* Pagination Dots */}
               {listing.images.length > 1 && (
                 <View style={styles.pagination}>
                   {listing.images.map((_, idx) => (
-                    <View 
-                      key={idx} 
-                      style={[styles.dot, activeImageIndex === idx && styles.activeDot]} 
+                    <View
+                      key={idx}
+                      style={[styles.dot, activeImageIndex === idx && styles.activeDot]}
                     />
                   ))}
                 </View>
@@ -159,10 +174,10 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
             </>
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons 
-                name={listing.type === ListingType.PRODUCT ? 'cube-outline' : 'briefcase-outline'} 
-                size={80} 
-                color={theme.colors.textSecondary} 
+              <Ionicons
+                name={listing.type === ListingType.PRODUCT ? 'cube-outline' : 'briefcase-outline'}
+                size={80}
+                color={theme.colors.textSecondary}
               />
             </View>
           )}
@@ -170,8 +185,8 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
           <TouchableOpacity style={styles.backButtonAbsolute} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.textLight} />
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.saveButtonAbsolute} onPress={() => {}}>
+
+          <TouchableOpacity style={styles.saveButtonAbsolute} onPress={() => { }}>
             <Ionicons name="bookmark-outline" size={24} color={theme.colors.textLight} />
           </TouchableOpacity>
         </View>
@@ -196,14 +211,24 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
             )}
           </View>
 
-          <Text style={styles.title}>{listing.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { flex: 1 }]}>{listing.title}</Text>
+            {stats && stats.totalReviews > 0 && (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={16} color="#FFD700" />
+                <Text style={styles.ratingText}>{stats.averageRating.toFixed(1)}</Text>
+                <Text style={styles.reviewCountText}>({stats.totalReviews})</Text>
+              </View>
+            )}
+          </View>
+          
           <Text style={styles.price}>{getPriceLabel()}</Text>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{listing.description}</Text>
-          
+
           {listing.stock !== undefined && listing.type === ListingType.PRODUCT && (
             <Text style={styles.stockText}>
               Stock: {listing.stock > 0 ? listing.stock : 'Out of stock'} {listing.unit || ''}
@@ -214,7 +239,7 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
 
           {/* Business Summary */}
           <Text style={styles.sectionTitle}>Offered by</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.businessCard}
             onPress={() => navigation.navigate('BusinessProfile', { businessId: listing.business._id })}
             activeOpacity={0.8}
@@ -234,33 +259,64 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
+
+          {/* Reviews Section */}
+          <View style={styles.divider} />
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Recent Reviews</Text>
+          </View>
+          
+          {reviews.length > 0 ? (
+            reviews.map((review, index) => (
+              <View key={review._id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewerName}>{review.author?.name || 'User'}</Text>
+                  <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text>
+                </View>
+                <View style={styles.reviewRatingRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons
+                      key={star}
+                      name={star <= review.rating ? 'star' : 'star-outline'}
+                      size={14}
+                      color="#FFD700"
+                    />
+                  ))}
+                </View>
+                {review.title && <Text style={styles.reviewTitle}>{review.title}</Text>}
+                <Text style={styles.reviewComment}>{review.comment}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noReviewsText}>No reviews yet.</Text>
+          )}
         </View>
 
       </ScrollView>
-      
+
       {/* Footer Action */}
       <View style={styles.footerAction}>
         {listing.availabilityStatus === AvailabilityStatus.AVAILABLE && listing.isActive ? (
           <>
             {listing.type === ListingType.PRODUCT ? (
               <>
-                <PlasoButton 
-                  title="Add to Cart" 
+                <PlasoButton
+                  title="Add to Cart"
                   onPress={() => handleAddToCart(false)}
                   variant="secondary"
                   loading={addingToCart}
                   style={{ flex: 1, marginRight: 8 }}
                 />
-                <PlasoButton 
-                  title="Buy Now" 
+                <PlasoButton
+                  title="Buy Now"
                   onPress={() => handleAddToCart(true)}
                   loading={addingToCart}
                   style={{ flex: 1 }}
                 />
               </>
             ) : (
-              <PlasoButton 
-                title="Request Service" 
+              <PlasoButton
+                title="Request Service"
                 onPress={() => handleAddToCart(true)}
                 loading={addingToCart}
                 style={{ flex: 1 }}
@@ -268,9 +324,9 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
             )}
           </>
         ) : (
-          <PlasoButton 
-            title="Currently Unavailable" 
-            onPress={() => {}}
+          <PlasoButton
+            title="Currently Unavailable"
+            onPress={() => { }}
             disabled
             style={{ flex: 1 }}
           />
@@ -463,5 +519,78 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     flexDirection: 'row',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ratingText: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+    marginLeft: 4,
+    fontSize: 14,
+  },
+  reviewCountText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  reviewCard: {
+    backgroundColor: theme.colors.surfaceHighlight,
+    padding: theme.spacing.md,
+    borderRadius: theme.radii.md,
+    marginBottom: theme.spacing.md,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reviewerName: {
+    color: theme.colors.textLight,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  reviewDate: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  reviewRatingRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  reviewTitle: {
+    color: theme.colors.textLight,
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  reviewComment: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noReviewsText: {
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
   },
 });

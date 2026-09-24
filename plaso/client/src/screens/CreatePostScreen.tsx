@@ -20,6 +20,7 @@ export default function CreatePostScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [media, setMedia] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<any>(null); // For Web File object
   const [visibility, setVisibility] = useState<LocationPrivacy>('NEARBY');
   const [location, setLocation] = useState<{ longitude: number; latitude: number } | null>(null);
   const [locationName, setLocationName] = useState<string>('');
@@ -41,6 +42,11 @@ export default function CreatePostScreen({ navigation }: Props) {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setMedia(result.assets[0].uri);
+      if (Platform.OS === 'web' && (result.assets[0] as any).file) {
+        setMediaFile((result.assets[0] as any).file);
+      } else {
+        setMediaFile(null);
+      }
     }
   };
 
@@ -63,7 +69,7 @@ export default function CreatePostScreen({ navigation }: Props) {
 
       const loc = await Location.getCurrentPositionAsync({});
       setLocation({ longitude: loc.coords.longitude, latitude: loc.coords.latitude });
-      
+
       // Reverse geocode for a friendly name (Optional, but let's try)
       const reverse = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
@@ -91,15 +97,57 @@ export default function CreatePostScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const payload: CreatePostRequest = {
-        visibility,
-        content: content.trim() || undefined,
-        media: media ? [media] : undefined,
-      };
+      let payload: CreatePostRequest | FormData;
+      
+      if (media) {
+        const formData = new FormData();
+        formData.append('visibility', visibility);
+        if (content.trim()) formData.append('content', content.trim());
+        
+        // Add location data
+        if (location) {
+          formData.append('location[longitude]', location.longitude.toString());
+          formData.append('location[latitude]', location.latitude.toString());
+          formData.append('locationName', locationName);
+        }
 
-      if (location) {
-        payload.location = location;
-        payload.locationName = locationName;
+        // Add media file
+        const filename = media.split('/').pop() || 'photo.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+        
+        if (Platform.OS === 'web') {
+          if (mediaFile) {
+            formData.append('media', mediaFile);
+          } else {
+            try {
+              const response = await fetch(media);
+              const blob = await response.blob();
+              formData.append('media', blob, filename);
+            } catch (e) {
+              console.error('Failed to fetch blob from media URI:', e);
+              throw new Error('Could not process image on Web.');
+            }
+          }
+        } else {
+          formData.append('media', {
+            uri: media,
+            name: filename,
+            type,
+          } as any);
+        }
+        
+        payload = formData;
+      } else {
+        const jsonPayload: CreatePostRequest = {
+          visibility,
+          content: content.trim() || undefined,
+        };
+        if (location) {
+          jsonPayload.location = location;
+          jsonPayload.locationName = locationName;
+        }
+        payload = jsonPayload;
       }
 
       const response = await postApi.createPost(payload);
@@ -117,7 +165,7 @@ export default function CreatePostScreen({ navigation }: Props) {
 
   return (
     <PlasoScreen>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
@@ -172,9 +220,9 @@ export default function CreatePostScreen({ navigation }: Props) {
                 <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
                 <Text style={styles.toolText}>Photo</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.toolBtn, location && styles.toolBtnActive]} 
+
+              <TouchableOpacity
+                style={[styles.toolBtn, location && styles.toolBtnActive]}
                 onPress={handleGetLocation}
                 disabled={locationLoading}
               >

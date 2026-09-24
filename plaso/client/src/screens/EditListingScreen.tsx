@@ -94,12 +94,29 @@ export default function EditListingScreen({ navigation }: { navigation: Navigati
       const response = await marketplaceApi.updateListing(listing._id, payload);
       
       if (response.success) {
-        Alert.alert('Success', 'Listing updated successfully!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+        if (Platform.OS === 'web') {
+          window.alert('Listing updated successfully!');
+          navigation.goBack();
+        } else {
+          Alert.alert('Success', 'Listing updated successfully!', [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
+        }
+      } else {
+        const errorMsg = response.message || 'Failed to update listing';
+        if (Platform.OS === 'web') {
+          window.alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update listing');
+      const errorMsg = error.response?.data?.message || 'Failed to update listing';
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
     } finally {
       setLoading(false);
     }

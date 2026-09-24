@@ -22,9 +22,9 @@ router.get('/business/:businessId', authenticate, getBusinessListings);
 router.get('/:id', authenticate, getListingById);
 
 // Owner routes
-router.get('/me/listings', authenticate, authorize('BUSINESS_OWNER'), getOwnerListings);
-router.post('/', authenticate, authorize('BUSINESS_OWNER'), createListing);
-router.patch('/:id', authenticate, authorize('BUSINESS_OWNER'), updateListing);
+router.get('/me/listings', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), getOwnerListings);
+router.post('/', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), createListing);
+router.patch('/:id', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), updateListing);
 router.delete('/:id', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), deleteListing);
 router.patch('/:id/status', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), updateListingStatus);
 

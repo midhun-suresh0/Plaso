@@ -14,6 +14,8 @@ export interface ApiResponse<T = undefined> {
 
 export interface PaginatedResponse<T> {
   listings: T[];
+  reviews: T[];
+  items: T[];
   pagination: {
     total: number;
     pages: number;
@@ -56,12 +58,17 @@ export type RootStackParamList = {
   AdminBusinesses: undefined;
   AdminBusinessDetails: { businessId: string };
   
+  // Review Routes
+  CreateReview: { orderId: string, businessId: string, listingId?: string, reviewId?: string };
+  MyReviews: undefined;
+  AdminReviews: undefined;
+  
   // Marketplace Routes
   Marketplace: undefined;
   ListingDetails: { listingId: string };
   CreateListing: { businessId: string };
   EditListing: { listing: MarketplaceListing };
-  BusinessListings: undefined;
+  BusinessListings: { businessId: string };
   AdminListings: undefined;
   
   // Order & Cart Routes

@@ -106,6 +106,38 @@ export default function UserProfileScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleDeletePost = (postId: string) => {
+    import('react-native').then(({ Platform }) => {
+      if (Platform.OS === 'web') {
+        const confirmDelete = window.confirm('Are you sure you want to delete this post?');
+        if (confirmDelete) {
+          postApi.deletePost(postId).then(() => {
+            setPosts(posts.filter(p => p._id !== postId));
+          }).catch((error: any) => {
+            window.alert(error.response?.data?.message || 'Failed to delete post');
+          });
+        }
+        return;
+      }
+  
+      Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await postApi.deletePost(postId);
+              setPosts(posts.filter(p => p._id !== postId));
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Failed to delete post');
+            }
+          }
+        }
+      ]);
+    });
+  };
+
   const renderHeader = () => {
     if (!profile) return null;
 
@@ -182,6 +214,7 @@ export default function UserProfileScreen({ navigation, route }: Props) {
             post={item} 
             onPress={(post) => navigation.navigate('PostDetails', { post })} 
             onCommentPress={(post) => navigation.navigate('PostDetails', { post })}
+            onDelete={handleDeletePost}
           />
         )}
         ListHeaderComponent={renderHeader()}

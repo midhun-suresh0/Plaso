@@ -39,9 +39,15 @@ export class UserController {
       if (!userId) {
         throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
       }
+      
+      const updateData = { ...req.body };
+      
+      if (req.file) {
+        updateData.profileImage = `/uploads/profiles/${req.file.filename}`;
+      }
 
       // MongoDB unique index might throw E11000 duplicate key error, handled by error middleware usually
-      const updatedUser = await UserService.updateProfile(userId, req.body);
+      const updatedUser = await UserService.updateProfile(userId, updateData);
       
       if (!updatedUser) {
         throw new AppError('User not found', HttpStatus.NOT_FOUND);

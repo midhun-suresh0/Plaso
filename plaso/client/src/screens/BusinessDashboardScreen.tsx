@@ -133,7 +133,7 @@ const BusinessDashboardScreen = () => {
           <PlasoButton 
             title="Manage Listings" 
             variant="secondary"
-            onPress={() => navigation.navigate('BusinessListings')} 
+            onPress={() => navigation.navigate('BusinessListings', { businessId: business._id })} 
             disabled={business.verificationStatus !== 'APPROVED'}
             style={{ marginTop: theme.spacing.md }}
           />

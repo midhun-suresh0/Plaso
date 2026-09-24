@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../constants/theme';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,20 +29,26 @@ export default function ProfileScreen({ navigation }: Props) {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Log Out', 
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to log out?')) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        'Log Out',
+        'Are you sure you want to log out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Log Out', 
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   return (
@@ -151,7 +157,7 @@ export default function ProfileScreen({ navigation }: Props) {
                 <Text style={styles.sectionTitle}>Business Management</Text>
               </View>
               <PlasoCard glass style={styles.settingsCard}>
-                {(user?.role as any) === 'BUSINESS_OWNER' as any && (
+                {((user?.role as any) === 'BUSINESS_OWNER' as any || (user?.role as any) === 'ADMIN' as any) && (
                   <>
                     <TouchableOpacity 
                       style={styles.settingRow} 
@@ -168,7 +174,7 @@ export default function ProfileScreen({ navigation }: Props) {
                 
                 {(user?.role as any) === 'ADMIN' as any && (
                   <>
-                    {(user?.role as any) === 'BUSINESS_OWNER' as any && <View style={styles.divider} />}
+                    <View style={styles.divider} />
                     <TouchableOpacity 
                       style={styles.settingRow} 
                       onPress={() => navigation.navigate('AdminBusinesses')}
@@ -190,6 +196,17 @@ export default function ProfileScreen({ navigation }: Props) {
                         <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
                       </View>
                     </TouchableOpacity>
+                    <View style={styles.divider} />
+                    <TouchableOpacity 
+                      style={styles.settingRow} 
+                      onPress={() => navigation.navigate('AdminReviews')}
+                    >
+                      <Ionicons name="star-half-outline" size={20} color={theme.colors.primary} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingLabel}>Review Moderation</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
                   </>
                 )}
               </PlasoCard>
@@ -207,6 +224,19 @@ export default function ProfileScreen({ navigation }: Props) {
               <Ionicons name="bookmark-outline" size={20} color={theme.colors.primary} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Saved Posts</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            
+            <View style={styles.divider} />
+            
+            <TouchableOpacity 
+              style={styles.settingRow} 
+              onPress={() => navigation.navigate('MyReviews')}
+            >
+              <Ionicons name="star-outline" size={20} color={theme.colors.primary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>My Reviews</Text>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </View>
             </TouchableOpacity>

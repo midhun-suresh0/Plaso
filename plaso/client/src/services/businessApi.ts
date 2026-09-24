@@ -19,34 +19,28 @@ export interface IBusinessData {
 export const businessApi = {
   // Owner Actions
   createBusiness: async (data: IBusinessData) => {
-    const response = await api.post('/businesses', data);
-    return response.data;
+    return api.post('/businesses', data);
   },
 
   getMyBusiness: async () => {
-    const response = await api.get('/businesses/owner/me');
-    return response.data;
+    return api.get('/businesses/owner/me');
   },
 
   updateMyBusiness: async (data: Partial<IBusinessData>) => {
-    const response = await api.patch('/businesses/owner/me', data);
-    return response.data;
+    return api.patch('/businesses/owner/me', data);
   },
 
   // Admin Actions
   getAdminBusinesses: async (status?: string, page = 1) => {
-    const response = await api.get(`/businesses/admin/list?status=${status || ''}&page=${page}`);
-    return response.data;
+    return api.get(`/businesses/admin/list?status=${status || ''}&page=${page}`);
   },
 
   updateBusinessStatus: async (id: string, status: string) => {
-    const response = await api.patch(`/businesses/admin/${id}/status`, { status });
-    return response.data;
+    return api.patch(`/businesses/admin/${id}/status`, { status });
   },
 
   // Public Actions
   getBusinessById: async (id: string) => {
-    const response = await api.get(`/businesses/${id}`);
-    return response.data;
+    return api.get(`/businesses/${id}`);
   }
 };

@@ -44,8 +44,16 @@ class MarketplaceApi {
       limit,
       ...filters,
     };
-    const queryParams = new URLSearchParams(params as any).toString();
-    const response = await api.get<PaginatedResponse<MarketplaceListing>>(`/marketplace/nearby?${queryParams}`);
+    
+    // Remove undefined values so they don't become the string "undefined"
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined) {
+        delete params[key];
+      }
+    });
+
+    const qs = new URLSearchParams(params);
+    const response = await api.get<PaginatedResponse<MarketplaceListing>>(`/marketplace/nearby?${qs.toString()}`);
     return response;
   }
 

@@ -3,7 +3,7 @@ import { ApiResponse } from '../types';
 import { Post, FeedResponse, CreatePostRequest, CommentsResponse, Comment } from '../types/post';
 
 export const postApi = {
-  createPost: (data: CreatePostRequest): Promise<ApiResponse<Post>> => {
+  createPost: (data: CreatePostRequest | FormData): Promise<ApiResponse<Post>> => {
     return api.post('/posts', data);
   },
 

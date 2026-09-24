@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -40,31 +40,52 @@ const AdminBusinessDetailsScreen = () => {
     }
   };
 
-  const handleUpdateStatus = (status: string) => {
-    Alert.alert(
-      `Confirm ${status}`,
-      `Are you sure you want to change the status to ${status}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Confirm', 
-          onPress: async () => {
-            try {
-              setActionLoading(true);
-              const response: any = await businessApi.updateBusinessStatus(businessId, status);
-              if (response.success) {
-                setBusiness((response as any).data);
-                Alert.alert('Success', `Business is now ${status}`);
-              }
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to update status');
-            } finally {
-              setActionLoading(false);
-            }
+  const handleUpdateStatus = async (status: string) => {
+    const performUpdate = async () => {
+      try {
+        setActionLoading(true);
+        const response: any = await businessApi.updateBusinessStatus(businessId, status);
+        if (response.success) {
+          setBusiness((response as any).data);
+          if (Platform.OS === 'web') {
+            window.alert(`Business is now ${status}`);
+          } else {
+            Alert.alert('Success', `Business is now ${status}`);
+          }
+        } else {
+          if (Platform.OS === 'web') {
+            window.alert(response.message || 'Failed to update status');
+          } else {
+            Alert.alert('Error', response.message || 'Failed to update status');
           }
         }
-      ]
-    );
+      } catch (error: any) {
+        const errorMsg = error.response?.data?.message || 'Failed to update status';
+        if (Platform.OS === 'web') {
+          window.alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+      } finally {
+        setActionLoading(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Are you sure you want to change the status to ${status}?`);
+      if (confirmed) {
+        performUpdate();
+      }
+    } else {
+      Alert.alert(
+        `Confirm ${status}`,
+        `Are you sure you want to change the status to ${status}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Confirm', onPress: performUpdate }
+        ]
+      );
+    }
   };
 
   if (loading || !business) {

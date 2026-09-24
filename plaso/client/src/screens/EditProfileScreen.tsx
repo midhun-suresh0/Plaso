@@ -38,6 +38,7 @@ export default function EditProfileScreen({ navigation }: Props) {
   const [username, setUsername] = useState(user?.username || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const [profileImageFile, setProfileImageFile] = useState<any>(null); // For Web File object
   const [interests, setInterests] = useState<string[]>(user?.interests || []);
   const [locationPrivacy, setLocationPrivacy] = useState<keyof LocationPrivacy | undefined>(
     (user?.locationPrivacy as keyof LocationPrivacy) || 'NEARBY'
@@ -45,10 +46,23 @@ export default function EditProfileScreen({ navigation }: Props) {
   const [discoveryRadius, setDiscoveryRadius] = useState(user?.discoveryRadius?.toString() || '5');
   const [coordinates, setCoordinates] = useState(user?.location?.coordinates || null);
 
+  const showAlert = (title: string, message: string, onConfirm?: () => void) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n${message}`);
+      if (onConfirm) onConfirm();
+    } else {
+      if (onConfirm) {
+        Alert.alert(title, message, [{ text: 'OK', onPress: onConfirm }]);
+      } else {
+        Alert.alert(title, message);
+      }
+    }
+  };
+
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to change your avatar.');
+      showAlert('Permission Denied', 'Sorry, we need camera roll permissions to change your avatar.');
       return;
     }
 
@@ -61,6 +75,11 @@ export default function EditProfileScreen({ navigation }: Props) {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setProfileImage(result.assets[0].uri);
+      if (Platform.OS === 'web' && (result.assets[0] as any).file) {
+        setProfileImageFile((result.assets[0] as any).file);
+      } else {
+        setProfileImageFile(null);
+      }
     }
   };
 
@@ -69,7 +88,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       setInterests(interests.filter((i) => i !== interest));
     } else {
       if (interests.length >= 10) {
-        Alert.alert('Limit Reached', 'You can select up to 10 interests.');
+        showAlert('Limit Reached', 'You can select up to 10 interests.');
         return;
       }
       setInterests([...interests, interest]);
@@ -81,7 +100,7 @@ export default function EditProfileScreen({ navigation }: Props) {
     try {
       const enabled = await Location.hasServicesEnabledAsync();
       if (!enabled) {
-        Alert.alert('Location Disabled', 'Location services are turned off. Please enable location services and try again.');
+        showAlert('Location Disabled', 'Location services are turned off. Please enable location services and try again.');
         setLocationLoading(false);
         return;
       }
@@ -93,14 +112,18 @@ export default function EditProfileScreen({ navigation }: Props) {
       }
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Location permission is required to set your location.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
+        if (Platform.OS === 'web') {
+          window.alert('Location permission is required to set your location.');
+        } else {
+          Alert.alert(
+            'Permission Denied',
+            'Location permission is required to set your location.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+        }
         setLocationLoading(false);
         return;
       }
@@ -112,7 +135,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       const { latitude, longitude } = location.coords;
 
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-        Alert.alert('Error', 'Invalid coordinates received.');
+        showAlert('Error', 'Invalid coordinates received.');
         setLocationLoading(false);
         return;
       }
@@ -123,13 +146,13 @@ export default function EditProfileScreen({ navigation }: Props) {
 
       if (response.success) {
         await checkAuth(); // Refresh user in context
-        Alert.alert('Success', 'Location updated successfully.');
+        showAlert('Success', 'Location updated successfully.');
       } else {
-        Alert.alert('Error', response.message || 'Unable to connect to the server.');
+        showAlert('Error', response.message || 'Unable to connect to the server.');
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Unable to detect your location. Please try again.');
+      showAlert('Error', 'Unable to detect your location. Please try again.');
     } finally {
       setLocationLoading(false);
     }
@@ -137,7 +160,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Validation Error', 'Name is required.');
+      showAlert('Validation Error', 'Name is required.');
       return;
     }
 
@@ -146,26 +169,49 @@ export default function EditProfileScreen({ navigation }: Props) {
       // Step 1: Update Profile
       const radiusNum = parseInt(discoveryRadius, 10);
       
-      const response = await userApi.updateProfile({
-        name,
-        username: username || undefined,
-        bio: bio || undefined,
-        interests,
-        locationPrivacy,
-        discoveryRadius: isNaN(radiusNum) ? 5 : radiusNum,
-        profileImage: profileImage || undefined, // In a real app, upload this to S3 first
+      const formData = new FormData();
+      formData.append('name', name);
+      if (username) formData.append('username', username);
+      if (bio) formData.append('bio', bio);
+      if (locationPrivacy) formData.append('locationPrivacy', locationPrivacy);
+      formData.append('discoveryRadius', (isNaN(radiusNum) ? 5 : radiusNum).toString());
+      
+      interests.forEach(interest => {
+        formData.append('interests[]', interest);
       });
+
+      if (profileImage && !profileImage.startsWith('http')) {
+        const filename = profileImage.split('/').pop() || 'profile.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+        
+        if (Platform.OS === 'web') {
+          if (profileImageFile) {
+            formData.append('profileImage', profileImageFile);
+          } else {
+            const response = await fetch(profileImage);
+            const blob = await response.blob();
+            formData.append('profileImage', blob, filename);
+          }
+        } else {
+          formData.append('profileImage', {
+            uri: profileImage,
+            name: filename,
+            type,
+          } as any);
+        }
+      }
+
+      const response = await userApi.updateProfile(formData);
 
       if (response.success) {
         await checkAuth(); // Refresh user in context
-        Alert.alert('Success', 'Profile updated successfully!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+        showAlert('Success', 'Profile updated successfully!', () => navigation.goBack());
       } else {
-        Alert.alert('Error', response.message || 'Failed to update profile');
+        showAlert('Error', response.message || 'Failed to update profile');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred while saving.');
+      showAlert('Error', error.response?.data?.message || 'An error occurred while saving.');
     } finally {
       setLoading(false);
     }

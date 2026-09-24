@@ -26,7 +26,7 @@ export const userApi = {
   /**
    * Update the current user's profile and settings
    */
-  async updateProfile(data: UserProfileUpdate): Promise<ApiResponse<any>> {
+  async updateProfile(data: UserProfileUpdate | FormData): Promise<ApiResponse<any>> {
     return api.patch<any>('/users/me', data);
   },
 

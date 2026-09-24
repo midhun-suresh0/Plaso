@@ -7,7 +7,8 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -120,6 +121,18 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const handleDeletePost = (postId: string) => {
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm('Are you sure you want to delete this post?');
+      if (confirmDelete) {
+        postApi.deletePost(postId).then(() => {
+          setPosts(posts.filter(p => p._id !== postId));
+        }).catch((error: any) => {
+          window.alert(error.response?.data?.message || 'Failed to delete post');
+        });
+      }
+      return;
+    }
+
     Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
       { text: 'Cancel', style: 'cancel' },
       { 

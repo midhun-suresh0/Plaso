@@ -16,17 +16,17 @@ router.get('/:id', BusinessController.getBusinessById);
 // --- Business Owner Routes ---
 router.post(
   '/',
-  authorize(UserRole.BUSINESS_OWNER),
+  authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
   BusinessController.createBusiness
 );
 router.get(
   '/owner/me',
-  authorize(UserRole.BUSINESS_OWNER),
+  authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
   BusinessController.getMyBusiness
 );
 router.patch(
   '/owner/me',
-  authorize(UserRole.BUSINESS_OWNER),
+  authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
   BusinessController.updateMyBusiness
 );
 

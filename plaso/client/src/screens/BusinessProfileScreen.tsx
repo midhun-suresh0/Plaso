@@ -13,6 +13,8 @@ import { useAuth } from '../context/AuthContext';
 import { marketplaceApi } from '../services/marketplaceApi';
 import { MarketplaceListing } from '../types/marketplace';
 import { ListingCard } from '../components/ListingCard';
+import { reviewApi } from '../services/api/reviewApi';
+import { Review, ReviewStats } from '../types/review';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'BusinessProfile'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -25,6 +27,8 @@ const BusinessProfileScreen = () => {
 
   const [business, setBusiness] = useState<any>(null);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [stats, setStats] = useState<ReviewStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false); // Placeholder for follow logic
 
@@ -35,9 +39,11 @@ const BusinessProfileScreen = () => {
   const fetchBusiness = async () => {
     try {
       setLoading(true);
-      const [businessData, listingsData] = await Promise.all([
+      const [businessData, listingsData, statsData, reviewsData] = await Promise.all([
         businessApi.getBusinessById(businessId),
-        marketplaceApi.getBusinessListings(businessId, 1, 5) // fetch recent 5 listings
+        marketplaceApi.getBusinessListings(businessId, 1, 5),
+        reviewApi.getBusinessRatingStats(businessId).catch(() => null),
+        reviewApi.getBusinessReviews(businessId, 1, 3).catch(() => null)
       ]);
       
       if ((businessData as any).success) {
@@ -46,6 +52,14 @@ const BusinessProfileScreen = () => {
       
       if (listingsData.success && listingsData.data) {
         setListings(listingsData.data.listings);
+      }
+
+      if (statsData?.success && statsData.data) {
+        setStats(statsData.data);
+      }
+
+      if (reviewsData?.success && reviewsData.data) {
+        setReviews(reviewsData.data.reviews);
       }
     } catch (error) {
       console.error('Error fetching business or listings:', error);
@@ -134,6 +148,13 @@ const BusinessProfileScreen = () => {
               <View style={styles.categoryRow}>
                 <MaterialIcons name={getCategoryIcon(business.category) as any} size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.categoryText}>{getCategoryLabel(business.category)}</Text>
+                {stats && stats.totalReviews > 0 && (
+                  <>
+                    <Text style={styles.dotSeparator}>•</Text>
+                    <Ionicons name="star" size={14} color="#FFD700" />
+                    <Text style={styles.ratingText}>{stats.averageRating.toFixed(1)} ({stats.totalReviews})</Text>
+                  </>
+                )}
               </View>
             </View>
             
@@ -233,6 +254,44 @@ const BusinessProfileScreen = () => {
             </ScrollView>
           </View>
         )}
+
+        {/* Reviews Section */}
+        <View style={[styles.section, { paddingRight: theme.spacing.lg }]}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          {reviews.length > 0 ? (
+            reviews.map((review, index) => (
+              <View key={review._id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewerName}>{review.author?.name || 'User'}</Text>
+                  <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text>
+                </View>
+                <View style={styles.reviewRatingRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons
+                      key={star}
+                      name={star <= review.rating ? 'star' : 'star-outline'}
+                      size={14}
+                      color="#FFD700"
+                    />
+                  ))}
+                </View>
+                {review.title && <Text style={styles.reviewTitle}>{review.title}</Text>}
+                <Text style={styles.reviewComment}>{review.comment}</Text>
+                
+                {review.businessResponse && (
+                  <View style={styles.businessResponseContainer}>
+                    <Text style={styles.businessResponseLabel}>Response from owner:</Text>
+                    <Text style={styles.businessResponseText}>{review.businessResponse.comment}</Text>
+                  </View>
+                )}
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyPostsContainer}>
+              <Text style={styles.emptyText}>No reviews yet.</Text>
+            </View>
+          )}
+        </View>
 
         {/* Posts Section (Placeholder for now) */}
         <View style={[styles.section, { paddingRight: theme.spacing.lg }]}>
@@ -394,7 +453,71 @@ const styles = StyleSheet.create({
   horizontalListingCard: {
     width: 250,
     marginRight: theme.spacing.md,
-  }
+  },
+  dotSeparator: {
+    color: theme.colors.textSecondary,
+    marginHorizontal: 4,
+  },
+  ratingText: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  reviewCard: {
+    backgroundColor: theme.colors.surfaceHighlight,
+    padding: theme.spacing.md,
+    borderRadius: theme.radii.md,
+    marginBottom: theme.spacing.md,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reviewerName: {
+    color: theme.colors.textLight,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  reviewDate: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  reviewRatingRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  reviewTitle: {
+    color: theme.colors.textLight,
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  reviewComment: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  businessResponseContainer: {
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: 'rgba(0, 229, 255, 0.05)',
+    borderRadius: theme.radii.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.primary,
+  },
+  businessResponseLabel: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  businessResponseText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
 });
 
 export default BusinessProfileScreen;

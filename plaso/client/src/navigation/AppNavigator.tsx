@@ -35,6 +35,9 @@ import MyOrdersScreen from '../screens/MyOrdersScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import BusinessOrdersScreen from '../screens/BusinessOrdersScreen';
 import AdminOrdersScreen from '../screens/AdminOrdersScreen';
+import CreateReviewScreen from '../screens/CreateReviewScreen';
+import MyReviewsScreen from '../screens/MyReviewsScreen';
+import AdminReviewsScreen from '../screens/AdminReviewsScreen';
 import { colors, theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -208,6 +211,21 @@ export default function AppNavigator(): React.JSX.Element {
             <Stack.Screen
               name="AdminOrders"
               component={AdminOrdersScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateReview"
+              component={CreateReviewScreen}
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="MyReviews"
+              component={MyReviewsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminReviews"
+              component={AdminReviewsScreen}
               options={{ headerShown: false }}
             />
           </>

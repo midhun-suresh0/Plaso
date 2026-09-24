@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -69,14 +69,22 @@ const EditBusinessScreen = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.description.trim()) {
-      Alert.alert('Error', 'Name and Description are required.');
+      showAlert('Error', 'Name and Description are required.');
       return;
     }
 
     if (!isEditing && !location) {
-      Alert.alert('Error', 'Location is required to register a business. Please enable location services.');
+      showAlert('Error', 'Location is required to register a business. Please enable location services.');
       return;
     }
 
@@ -88,8 +96,8 @@ const EditBusinessScreen = () => {
       // If creating new, we must include the location
       if (!isEditing) {
         payload.location = {
-          longitude: location!.longitude,
-          latitude: location!.latitude
+          type: 'Point',
+          coordinates: [location!.longitude, location!.latitude]
         };
       }
 
@@ -101,11 +109,13 @@ const EditBusinessScreen = () => {
       }
 
       if (response.success) {
-        Alert.alert('Success', `Business ${isEditing ? 'updated' : 'registered'} successfully.`);
+        showAlert('Success', `Business ${isEditing ? 'updated' : 'registered'} successfully.`);
         navigation.goBack();
+      } else {
+        showAlert('Error', response.message || 'Failed to save business details.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to save business details.');
+      showAlert('Error', error.response?.data?.message || 'Failed to save business details.');
     } finally {
       setLoading(false);
     }

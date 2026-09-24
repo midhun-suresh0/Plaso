@@ -8,11 +8,13 @@ const router = Router();
 // Protect all user routes
 router.use(authenticate);
 
+import { upload } from '../middleware/upload';
+
 // Profile routes
 router.get('/me', UserController.getMe);
 router.get('/me/followers', (req, res, next) => { (req.params as any).id = (req as any).user.userId; UserController.getFollowers(req, res, next); });
 router.get('/me/following', (req, res, next) => { (req.params as any).id = (req as any).user.userId; UserController.getFollowing(req, res, next); });
-router.patch('/me', UserController.updateProfile);
+router.patch('/me', upload.single('profileImage'), UserController.updateProfile);
 router.patch('/me/location', UserController.updateLocation);
 router.get('/me/saved-posts', postController.getSavedPosts);
 

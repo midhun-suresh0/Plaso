@@ -59,6 +59,16 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
   };
 
   const handleCreate = async () => {
+    if (!businessId) {
+      const errorMsg = 'Business ID is missing. Please go back to the dashboard and reopen this screen.';
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
+      return;
+    }
+
     if (!title.trim() || !description.trim() || !price.trim()) {
       Alert.alert('Validation Error', 'Title, description, and price are required.');
       return;
@@ -95,12 +105,29 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
       const response = await marketplaceApi.createListing(payload);
       
       if (response.success) {
-        Alert.alert('Success', 'Listing published successfully!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+        if (Platform.OS === 'web') {
+          window.alert('Listing published successfully!');
+          navigation.goBack();
+        } else {
+          Alert.alert('Success', 'Listing published successfully!', [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
+        }
+      } else {
+        const errorMsg = response.message || 'Failed to create listing';
+        if (Platform.OS === 'web') {
+          window.alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to create listing');
+      const errorMsg = error.response?.data?.message || 'Failed to create listing';
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
     } finally {
       setLoading(false);
     }

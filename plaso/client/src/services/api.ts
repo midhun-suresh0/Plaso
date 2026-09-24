@@ -24,10 +24,12 @@ class ApiClient {
    * Build request headers.
    * Automatically attaches JWT auth token if available.
    */
-  private async getHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  private async getHeaders(isFormData: boolean = false): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {};
+    
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const token = await tokenStorage.getToken();
     if (token) {
@@ -55,8 +57,9 @@ class ApiClient {
     }
 
     try {
-      const headers = await this.getHeaders();
-      
+      const isFormData = body instanceof FormData;
+      const headers = await this.getHeaders(isFormData);
+
       const options: RequestInit = {
         method,
         headers,
@@ -64,13 +67,13 @@ class ApiClient {
       };
 
       if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-        options.body = JSON.stringify(body);
+        options.body = isFormData ? (body as FormData) : JSON.stringify(body);
       }
 
       const startTime = Date.now();
       const response = await fetch(url, options);
       const endTime = Date.now();
-      
+
       if (__DEV__) {
         console.log(`[PLASO API] Response: ${response.status} (${endTime - startTime}ms)`);
       }
@@ -79,7 +82,7 @@ class ApiClient {
 
       return data as ApiResponse<T>;
     } catch (error) {
-      const isAbortError = 
+      const isAbortError =
         (error instanceof Error && error.name === 'AbortError') ||
         (error instanceof Error && error.message.includes('Fetch request has been canceled'));
 

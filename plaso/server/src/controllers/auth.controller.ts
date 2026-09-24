@@ -3,6 +3,7 @@ import User, { UserRole } from '../models/user.model';
 import { AuthService } from '../services/auth.service';
 import { AppError, HttpStatus } from '../types';
 import { emailService } from '../services/email.service';
+import { UserService } from '../services/user.service';
 
 export class AuthController {
   /**
@@ -53,10 +54,8 @@ export class AuthController {
         data: {
           token,
           user: {
+            ...user.toJSON(),
             id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
           },
         },
       });
@@ -109,10 +108,8 @@ export class AuthController {
         data: {
           token,
           user: {
+            ...user.toJSON(),
             id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
           },
         },
       });
@@ -143,14 +140,14 @@ export class AuthController {
         throw new AppError('Account is inactive', HttpStatus.FORBIDDEN);
       }
 
+      const userStats = await UserService.getUserProfileWithStats(userId, userId);
+
       res.status(HttpStatus.OK).json({
         success: true,
         data: {
           user: {
+            ...userStats,
             id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
           },
         },
       });

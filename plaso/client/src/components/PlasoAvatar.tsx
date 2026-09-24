@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image, Text, StyleSheet, ViewStyle } from 'react-native';
 import { theme } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { config } from '../constants/config';
 
 export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | 'hero';
 
@@ -30,10 +31,17 @@ export const PlasoAvatar: React.FC<PlasoAvatarProps> = ({
 }) => {
   const dim = sizeMap[size];
 
+  const getImageUrl = (path: string) => {
+    if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('file:') || path.startsWith('blob:')) {
+      return path;
+    }
+    return config.api.baseUrl.replace('/api', '') + path;
+  };
+
   const content = (
     <View style={[styles.innerContainer, { width: dim, height: dim, borderRadius: dim / 2 }]}>
       {uri ? (
-        <Image source={{ uri }} style={styles.image} />
+        <Image source={{ uri: getImageUrl(uri) }} style={styles.image} />
       ) : (
         <Text style={[styles.placeholderText, { fontSize: dim * 0.4 }]}>
           {name ? name.charAt(0).toUpperCase() : 'U'}

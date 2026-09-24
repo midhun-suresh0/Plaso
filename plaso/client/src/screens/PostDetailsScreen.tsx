@@ -73,6 +73,19 @@ export default function PostDetailsScreen({ navigation, route }: Props) {
   };
 
   const handleDelete = async (commentId: string) => {
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm('Are you sure you want to delete this comment?');
+      if (confirmDelete) {
+        try {
+          await postApi.deleteComment(commentId);
+          setComments(comments.filter(c => c._id !== commentId));
+        } catch (error: any) {
+          window.alert(error.response?.data?.message || 'Failed to delete comment');
+        }
+      }
+      return;
+    }
+
     Alert.alert('Delete Comment', 'Are you sure you want to delete this comment?', [
       { text: 'Cancel', style: 'cancel' },
       {

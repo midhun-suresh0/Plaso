@@ -7,6 +7,7 @@ import { theme } from '../constants/theme';
 import { PlasoAvatar } from './PlasoAvatar';
 import { postApi } from '../services/postApi';
 import { useAuth } from '../context/AuthContext';
+import { config } from '../constants/config';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -64,10 +65,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
 
   const isOwner = user?._id === post.author._id || user?.id === post.author._id; // Accommodating different user id formats
   const hasLocation = !!post.locationName || post.distanceKm !== undefined || !!post.distance;
-  const distanceStr = post.distanceKm !== undefined 
+  const distanceStr = post.distanceKm !== undefined
     ? `${post.distanceKm} km away`
-    : post.distance 
-      ? `${(post.distance / 1000).toFixed(1)} km away` 
+    : post.distance
+      ? `${(post.distance / 1000).toFixed(1)} km away`
       : '';
   const locationText = post.locationName || distanceStr;
 
@@ -77,6 +78,13 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
     } else {
       navigation.navigate('UserProfile', { userId: post.author._id });
     }
+  };
+
+  const getImageUrl = (path: string) => {
+    if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('file:') || path.startsWith('blob:')) {
+      return path;
+    }
+    return config.api.baseUrl.replace('/api', '') + path;
   };
 
   return (
@@ -114,24 +122,29 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
         )}
 
         {post.media && post.media.length > 0 && (
-          <Image source={{ uri: post.media[0] }} style={styles.image} />
+          <Image 
+            source={{ uri: getImageUrl(post.media[0]) }} 
+            style={styles.image} 
+            onError={(e) => console.log('Image Load Error:', e.nativeEvent, getImageUrl(post.media[0]))}
+            onLoad={() => console.log('Image Loaded successfully:', getImageUrl(post.media[0]))}
+          />
         )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.actionButton} onPress={handleLike} disabled={disabled}>
-          <Ionicons 
-            name={isLiked ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isLiked ? theme.colors.primary : theme.colors.textSecondary} 
+          <Ionicons
+            name={isLiked ? "heart" : "heart-outline"}
+            size={24}
+            color={isLiked ? theme.colors.primary : theme.colors.textSecondary}
           />
           <Text style={[styles.actionText, isLiked && styles.actionTextActive]}>
             {likeCount > 0 ? likeCount : 'Like'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.actionButton} 
+        <TouchableOpacity
+          style={styles.actionButton}
           onPress={() => !disabled && onCommentPress && onCommentPress(post)}
           disabled={disabled}
         >
@@ -142,13 +155,13 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleSave} disabled={disabled}>
-          <Ionicons 
-            name={isSaved ? "bookmark" : "bookmark-outline"} 
-            size={22} 
-            color={isSaved ? theme.colors.primary : theme.colors.textSecondary} 
+          <Ionicons
+            name={isSaved ? "bookmark" : "bookmark-outline"}
+            size={22}
+            color={isSaved ? theme.colors.primary : theme.colors.textSecondary}
           />
         </TouchableOpacity>
-        
+
         <View style={{ flex: 1 }} />
 
         <TouchableOpacity style={styles.actionButtonEnd} disabled={disabled}>

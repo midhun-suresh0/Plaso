@@ -9,6 +9,7 @@ import { PlasoChip } from '../components/PlasoChip';
 import { theme } from '../constants/theme';
 import { orderApi } from '../services/api/orderApi';
 import { paymentApi } from '../services/api/paymentApi';
+import { reviewApi } from '../services/api/reviewApi';
 import { Order, OrderStatus, FulfillmentType, PaymentStatus } from '../types/order';
 import { RootStackParamList } from '../types';
 
@@ -20,6 +21,7 @@ export default function OrderDetailsScreen() {
   const { orderId, isAdminView } = route.params;
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [review, setReview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -28,6 +30,18 @@ export default function OrderDetailsScreen() {
       const response = await orderApi.getOrderById(orderId);
       if (response.success && response.data) {
         setOrder(response.data!.order);
+        
+        // Fetch review if eligible
+        if (response.data!.order.orderStatus === OrderStatus.COMPLETED && !isAdminView) {
+          try {
+            const reviewRes = await reviewApi.getReviewByOrder(orderId);
+            if (reviewRes.success && reviewRes.data) {
+              setReview(reviewRes.data);
+            }
+          } catch (err) {
+            // No review found or error
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching order details:', error);
@@ -263,6 +277,20 @@ export default function OrderDetailsScreen() {
 
       {/* Action Buttons */}
       <View style={styles.footer}>
+        {!isAdminView && order.orderStatus === OrderStatus.COMPLETED && [PaymentStatus.PAID, PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED].includes(order.paymentStatus) && (
+          <PlasoButton 
+            title={review ? 'Edit Review' : 'Rate Your Experience'} 
+            onPress={() => navigation.navigate('CreateReview' as any, { 
+              orderId: order._id, 
+              businessId: (order.business as any)?._id || order.business,
+              listingId: (order.items[0]?.listing as any)?._id || order.items[0]?.listing,
+              reviewId: review?._id 
+            })}
+            style={{ marginBottom: 12, backgroundColor: review ? theme.colors.surface : theme.colors.primary }}
+            textStyle={{ color: review ? theme.colors.primary : '#000' }}
+          />
+        )}
+
         {canComplete && (
           <PlasoButton 
             title="Confirm Received" 

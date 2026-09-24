@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { theme } from '../constants/theme';
@@ -14,7 +14,12 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'BusinessListings'>;
 };
 
+type BusinessListingsRouteProp = RouteProp<RootStackParamList, 'BusinessListings'>;
+
 export default function BusinessListingsScreen({ navigation }: Props) {
+  const route = useRoute<BusinessListingsRouteProp>();
+  const { businessId } = route.params;
+
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +105,7 @@ export default function BusinessListingsScreen({ navigation }: Props) {
         <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>My Listings</Text>
-      <TouchableOpacity onPress={() => navigation.navigate('CreateListing', { businessId: listings[0]?.business._id || '' })}>
+      <TouchableOpacity onPress={() => navigation.navigate('CreateListing', { businessId })}>
         <Ionicons name="add" size={28} color={theme.colors.primary} />
       </TouchableOpacity>
     </View>
@@ -149,7 +154,7 @@ export default function BusinessListingsScreen({ navigation }: Props) {
         <Text style={styles.emptyText}>Create your first product or service to start selling on Plaso.</Text>
         <TouchableOpacity 
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('CreateListing', { businessId: '' })}
+          onPress={() => navigation.navigate('CreateListing', { businessId })}
         >
           <Text style={styles.emptyButtonText}>Create Listing</Text>
         </TouchableOpacity>
