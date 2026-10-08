@@ -8,6 +8,7 @@ import { PostCard } from '../components/PostCard';
 import { SearchResultUser } from '../components/SearchResultUser';
 import { theme } from '../constants/theme';
 import { searchApi, SearchUser } from '../services/searchApi';
+import { recommendationApi } from '../services/api/recommendationApi';
 import { Post } from '../types/post';
 
 type Props = {
@@ -23,9 +24,28 @@ export default function SearchScreen({ navigation }: Props) {
   
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  // Load suggestions initially or when query is very short
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      loadSuggestions(query);
+    }
+  }, [query]);
+
+  const loadSuggestions = async (q: string) => {
+    try {
+      const res = await recommendationApi.getSearchSuggestions(q);
+      if (res.success && res.data) {
+        setSuggestions(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Debounce the search query
   useEffect(() => {
@@ -98,6 +118,19 @@ export default function SearchScreen({ navigation }: Props) {
     if (loading) return null;
     
     if (!searched) {
+      if (suggestions.length > 0) {
+        return (
+          <View style={styles.suggestionsWrapper}>
+            <Text style={styles.suggestionsHeader}>Suggested for you</Text>
+            {suggestions.map((s, index) => (
+              <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => { setQuery(s); setDebouncedQuery(s); }}>
+                <Ionicons name="search-outline" size={16} color={theme.colors.textSecondary} />
+                <Text style={styles.suggestionText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+      }
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} />
@@ -189,6 +222,9 @@ export default function SearchScreen({ navigation }: Props) {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity style={{ marginLeft: theme.spacing.md }} onPress={() => navigation.navigate('MapDiscovery')}>
+          <Ionicons name="map-outline" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
       </View>
 
       {renderTabs()}
@@ -283,4 +319,25 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: theme.typography.sizes.md,
   },
+  suggestionsWrapper: {
+    padding: theme.spacing.lg,
+  },
+  suggestionsHeader: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: theme.spacing.md,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  suggestionText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    marginLeft: theme.spacing.md,
+  }
 });

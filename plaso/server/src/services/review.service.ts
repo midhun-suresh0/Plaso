@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import Review, { ReviewStatus } from '../models/review.model';
-import ReviewReport from '../models/reviewReport.model';
+import Report, { TargetType, ReportStatus } from '../models/report.model';
 import Order, { OrderStatus, PaymentStatus } from '../models/order.model';
 import { NotificationService } from './notification.service';
 import { NotificationType } from '../models/notification.model';
@@ -314,7 +314,7 @@ export class ReviewService {
   }
 
   static async reportReview(userId: string, reviewId: string, reason: string, description?: string) {
-    const existingReport = await ReviewReport.findOne({ review: reviewId, reporter: userId });
+    const existingReport = await Report.findOne({ targetId: reviewId, targetType: TargetType.REVIEW, reporter: userId, status: ReportStatus.OPEN });
     if (existingReport) {
       throw new AppError('You have already reported this review', 400);
     }
@@ -322,8 +322,9 @@ export class ReviewService {
     const review = await Review.findById(reviewId);
     if (!review) throw new AppError('Review not found', 404);
 
-    const report = await ReviewReport.create({
-      review: reviewId,
+    const report = await Report.create({
+      targetId: reviewId,
+      targetType: TargetType.REVIEW,
       reporter: userId,
       reason,
       description

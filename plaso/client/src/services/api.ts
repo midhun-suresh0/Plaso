@@ -30,6 +30,11 @@ class ApiClient {
     if (!isFormData) {
       headers['Content-Type'] = 'application/json';
     }
+    
+    // Prevent aggressive caching on mobile devices
+    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    headers['Pragma'] = 'no-cache';
+    headers['Expires'] = '0';
 
     const token = await tokenStorage.getToken();
     if (token) {
@@ -50,15 +55,18 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const isFormData = body instanceof FormData || (body && typeof (body as any).append === 'function');
+    
+    // Give file uploads a much longer timeout (60s vs 10s)
+    const requestTimeout = isFormData ? 60000 : this.timeout;
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
 
     if (__DEV__) {
       console.log(`[PLASO API] ${method} ${url}`);
     }
 
     try {
-      const isFormData = body instanceof FormData;
-      const headers = await this.getHeaders(isFormData);
+      const headers = await this.getHeaders(isFormData as boolean);
 
       const options: RequestInit = {
         method,
@@ -73,6 +81,7 @@ class ApiClient {
       const startTime = Date.now();
       const response = await fetch(url, options);
       const endTime = Date.now();
+      clearTimeout(timeoutId);
 
       if (__DEV__) {
         console.log(`[PLASO API] Response: ${response.status} (${endTime - startTime}ms)`);

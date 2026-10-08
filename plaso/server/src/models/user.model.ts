@@ -21,6 +21,7 @@ export interface IUser extends Document {
   username?: string;
   bio?: string;
   profileImage?: string;
+  googleId?: string;
   interests?: string[];
   locationPrivacy: LocationPrivacy;
   discoveryRadius: number; // in km
@@ -54,7 +55,17 @@ const UserSchema: Schema = new Schema(
     },
     passwordHash: {
       type: String,
-      required: [true, 'Password is required'],
+      required: [
+        function (this: any) {
+          return !this.googleId;
+        },
+        'Password is required for local authentication',
+      ],
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     role: {
       type: String,

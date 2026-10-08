@@ -54,9 +54,10 @@ export type RootStackParamList = {
   BusinessDiscovery: undefined;
   BusinessProfile: { businessId: string };
   BusinessDashboard: undefined;
-  EditBusiness: undefined;
+  EditBusiness: { businessId?: string } | undefined;
   AdminBusinesses: undefined;
   AdminBusinessDetails: { businessId: string };
+  AdminDashboard: undefined;
   
   // Review Routes
   CreateReview: { orderId: string, businessId: string, listingId?: string, reviewId?: string };
@@ -74,8 +75,19 @@ export type RootStackParamList = {
   // Order & Cart Routes
   Cart: undefined;
   Checkout: undefined;
+  OrderSuccess: { orderId: string };
   MyOrders: undefined;
   OrderDetails: { orderId: string };
   BusinessOrders: { businessId: string };
   AdminOrders: undefined;
+
+  // Messaging Routes
+  ConversationList: undefined;
+  Chat: { conversationId?: string; targetUserId?: string; businessId?: string; listingId?: string; initialMessage?: string };
+
+  // Story Routes
+  CreateStory: { authorType?: 'USER' | 'BUSINESS'; businessId?: string } | undefined;
+  StoryViewer: { storyGroups: any[]; initialGroupIndex?: number };
+  PersonalizationSetup: { isSignup?: boolean } | undefined;
+  MapDiscovery: undefined;
 };

@@ -22,7 +22,7 @@ router.post(
 router.get(
   '/owner/me',
   authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
-  BusinessController.getMyBusiness
+  BusinessController.getOwnerBusinesses
 );
 router.patch(
   '/owner/me',

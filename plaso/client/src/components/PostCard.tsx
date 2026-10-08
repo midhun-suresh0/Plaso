@@ -11,6 +11,7 @@ import { config } from '../constants/config';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { recommendationApi } from '../services/api/recommendationApi';
 
 interface PostCardProps {
   post: Post;
@@ -87,8 +88,25 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
     return config.api.baseUrl.replace('/api', '') + path;
   };
 
+  const handleNotInterested = async () => {
+    try {
+      // Hide locally first
+      if (onDelete) onDelete(post._id); 
+      // Track not interested
+      await recommendationApi.submitFeedback('NOT_INTERESTED', post._id, 'Post');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <View style={styles.card}>
+      {post.recommendationReason && (
+        <View style={styles.recommendationBanner}>
+          <Ionicons name="sparkles" size={12} color={theme.colors.primary} />
+          <Text style={styles.recommendationText}>{post.recommendationReason}</Text>
+        </View>
+      )}
       <View style={styles.header}>
         <TouchableOpacity style={styles.authorInfo} onPress={handleAuthorPress}>
           <PlasoAvatar uri={post.author.profileImage} name={post.author.name} size="sm" />
@@ -100,11 +118,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
             </Text>
           </View>
         </TouchableOpacity>
-        {isOwner && onDelete && !disabled && (
-          <TouchableOpacity onPress={() => onDelete(post._id)} style={styles.menuButton}>
-            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-          </TouchableOpacity>
-        )}
+        
+        <View style={styles.headerActions}>
+          {isOwner && onDelete && !disabled && (
+            <TouchableOpacity onPress={() => onDelete(post._id)} style={styles.menuButton}>
+              <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+            </TouchableOpacity>
+          )}
+          {!isOwner && !disabled && (
+            <TouchableOpacity onPress={handleNotInterested} style={styles.menuButton}>
+              <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={() => !disabled && onPress && onPress(post)}>
@@ -125,8 +151,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
           <Image 
             source={{ uri: getImageUrl(post.media[0]) }} 
             style={styles.image} 
-            onError={(e) => console.log('Image Load Error:', e.nativeEvent, getImageUrl(post.media[0]))}
-            onLoad={() => console.log('Image Loaded successfully:', getImageUrl(post.media[0]))}
+            onError={(e) => console.log('Image Load Error:', e.nativeEvent, post.media ? getImageUrl(post.media[0]) : '')}
+            onLoad={() => console.log('Image Loaded successfully:', post.media ? getImageUrl(post.media[0]) : '')}
           />
         )}
       </TouchableOpacity>
@@ -187,6 +213,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,6 +247,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
     borderRadius: theme.radii.full,
+  },
+  recommendationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  recommendationText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.sizes.xs,
+    marginLeft: 4,
+    fontStyle: 'italic',
   },
   locationText: {
     color: theme.colors.primary,

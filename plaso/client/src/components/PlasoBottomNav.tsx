@@ -16,11 +16,31 @@ export const PlasoBottomNav: React.FC<PlasoBottomNavProps> = ({ activeTab = 'Hom
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { unreadCount } = useNotifications();
 
+  const [messageUnreadCount, setMessageUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    // Initial fetch of unread count
+    import('../services/api/messageApi').then(({ messageApi }) => {
+      messageApi.getUnreadCount().then(res => {
+        if (res.success && res.data) {
+          setMessageUnreadCount(res.data);
+        }
+      });
+    });
+
+    // Listen for new messages
+    import('../services/socket').then(({ socketService }) => {
+      socketService.on('newMessage', () => {
+        setMessageUnreadCount(prev => prev + 1);
+      });
+    });
+  }, []);
+
   const navItems: Array<{ name: string; icon: any; activeIcon: any; isCenter?: boolean }> = [
     { name: 'Home', icon: 'home-outline', activeIcon: 'home' },
     { name: 'Explore', icon: 'compass-outline', activeIcon: 'compass' },
     { name: 'Create', icon: 'add-circle', activeIcon: 'add-circle', isCenter: true },
-    { name: 'Activity', icon: 'heart-outline', activeIcon: 'heart' },
+    { name: 'Messages', icon: 'chatbubble-outline', activeIcon: 'chatbubble' },
     { name: 'Profile', icon: 'person-outline', activeIcon: 'person' },
   ];
 
@@ -29,7 +49,7 @@ export const PlasoBottomNav: React.FC<PlasoBottomNavProps> = ({ activeTab = 'Hom
     if (tabName === 'Profile') navigation.navigate('Profile');
     if (tabName === 'Create') navigation.navigate('CreatePost');
     if (tabName === 'Explore') navigation.navigate('Search');
-    if (tabName === 'Activity') navigation.navigate('Notifications');
+    if (tabName === 'Messages') navigation.navigate('ConversationList');
   };
 
   return (
@@ -51,15 +71,15 @@ export const PlasoBottomNav: React.FC<PlasoBottomNavProps> = ({ activeTab = 'Hom
                   <Ionicons name="add" size={32} color={theme.colors.white} />
                 </View>
               ) : (
-                <View style={item.name === 'Activity' ? styles.iconContainer : undefined}>
+                <View style={item.name === 'Messages' ? styles.iconContainer : undefined}>
                   <Ionicons
                     name={isActive ? item.activeIcon : item.icon}
                     size={24}
                     color={isActive ? theme.colors.white : theme.colors.textSecondary}
                   />
-                  {item.name === 'Activity' && unreadCount > 0 && (
+                  {item.name === 'Messages' && messageUnreadCount > 0 && (
                     <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                      <Text style={styles.badgeText}>{messageUnreadCount > 9 ? '9+' : messageUnreadCount}</Text>
                     </View>
                   )}
                 </View>

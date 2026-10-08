@@ -21,7 +21,9 @@ import { PostCard } from '../components/PostCard';
 import { FeedTabs } from '../components/FeedTabs';
 import { FeedSkeleton } from '../components/FeedSkeleton';
 import { UserSuggestionCard } from '../components/UserSuggestionCard';
+import { StoryRow } from '../components/StoryRow';
 import { postApi } from '../services/postApi';
+import { recommendationApi } from '../services/api/recommendationApi';
 import { discoveryApi, SuggestedUser } from '../services/discoveryApi';
 import { Post } from '../types/post';
 import { useFocusEffect } from '@react-navigation/native';
@@ -39,23 +41,33 @@ export default function HomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'nearby'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'nearby' | 'trending'>('home');
   const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
 
-  const fetchFeed = async (pageNumber: number, type: 'home' | 'nearby', isRefresh = false) => {
+  const fetchFeed = async (pageNumber: number, type: 'home' | 'nearby' | 'trending', isRefresh = false) => {
     try {
-      const response = await postApi.getFeed(type, pageNumber, 10);
-      if (response.success && response.data) {
-        if (isRefresh || pageNumber === 1) {
-          setPosts(response.data.posts);
-        } else {
-          setPosts(prev => {
-            // Prevent duplicates using Map
-            const uniquePosts = new Map([...prev, ...response.data!.posts].map(p => [p._id, p]));
-            return Array.from(uniquePosts.values());
-          });
+      let response: any;
+      if (type === 'trending') {
+        response = await recommendationApi.getTrending();
+        // trending api doesn't have pagination yet
+        if (response.success && response.data) {
+          setPosts(response.data);
+          setHasMore(false);
         }
-        setHasMore(response.data.hasMore);
+      } else {
+        response = await recommendationApi.getFeed(pageNumber, 10, type);
+        if (response.success && response.data) {
+          if (isRefresh || pageNumber === 1) {
+            setPosts(response.data.posts);
+          } else {
+            setPosts(prev => {
+              // Prevent duplicates using Map
+              const uniquePosts = new Map([...prev, ...response.data!.posts].map((p: any) => [p._id, p]));
+              return Array.from(uniquePosts.values());
+            });
+          }
+          setHasMore(response.data.hasMore);
+        }
       }
     } catch (error: any) {
       if (type === 'nearby' && error.response?.data?.message?.includes('Location is required')) {
@@ -88,7 +100,7 @@ export default function HomeScreen({ navigation }: Props) {
     }, [activeTab])
   );
 
-  const handleTabChange = (tab: 'home' | 'nearby') => {
+  const handleTabChange = (tab: 'home' | 'nearby' | 'trending') => {
     if (tab === activeTab) return;
     setActiveTab(tab);
     setLoading(true);
@@ -160,6 +172,9 @@ export default function HomeScreen({ navigation }: Props) {
             {user?.locationPrivacy === 'PRIVATE' ? 'Private' : 'Near you'}
           </Text>
         </View>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('MapDiscovery')}>
+          <Ionicons name="map-outline" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
         </TouchableOpacity>
@@ -270,6 +285,7 @@ export default function HomeScreen({ navigation }: Props) {
     <PlasoScreen>
       <View style={styles.container}>
         {renderHeader()}
+        <StoryRow />
         <FeedTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
         {loading && posts.length === 0 ? (

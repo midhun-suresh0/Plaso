@@ -173,14 +173,23 @@ export default function UserProfileScreen({ navigation, route }: Props) {
         </View>
 
         {currentUser?._id !== userId && (
-          <TouchableOpacity 
-            style={[styles.followButton, profile.isFollowing && styles.followingButton]}
-            onPress={handleToggleFollow}
-          >
-            <Text style={[styles.followButtonText, profile.isFollowing && styles.followingButtonText]}>
-              {profile.isFollowing ? 'Following' : 'Follow'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: theme.spacing.xl }}>
+            <TouchableOpacity 
+              style={[styles.followButton, { marginBottom: 0, flex: 1 }]}
+              onPress={() => navigation.navigate('Chat', { targetUserId: userId })}
+            >
+              <Text style={styles.followButtonText}>Message</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.followButton, profile.isFollowing && styles.followingButton, { marginBottom: 0, flex: 1 }]}
+              onPress={handleToggleFollow}
+            >
+              <Text style={[styles.followButtonText, profile.isFollowing && styles.followingButtonText]}>
+                {profile.isFollowing ? 'Following' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {profile.interests && profile.interests.length > 0 && (

@@ -1,9 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import { marketplaceService } from '../services/marketplace.service';
 import { HttpStatus } from '../types';
+import { RecommendationService } from '../services/recommendation.service';
+import { InteractionType } from '../models/userInteraction.model';
 
 export const createListing = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    let allImages: string[] = [];
+    
+    // Existing images from body
+    if (req.body.existingImages) {
+      if (Array.isArray(req.body.existingImages)) {
+        allImages = [...req.body.existingImages];
+      } else {
+        allImages.push(req.body.existingImages);
+      }
+    }
+    
+    // New uploaded images
+    if (req.files && Array.isArray(req.files)) {
+      const files = req.files as Express.Multer.File[];
+      allImages = [...allImages, ...files.map(file => `/uploads/${file.filename}`)];
+    }
+    
+    req.body.images = allImages.length > 0 ? allImages : undefined;
+    
     const listing = await marketplaceService.createListing(req.user!.userId, req.body);
     res.status(HttpStatus.CREATED).json({ success: true, message: 'Listing created successfully', data: listing });
   } catch (error) {
@@ -14,6 +35,33 @@ export const createListing = async (req: Request, res: Response, next: NextFunct
 export const updateListing = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    
+    let allImages: string[] = [];
+    let hasImageUpdates = false;
+    
+    // Existing images from body
+    if (req.body.existingImages) {
+      hasImageUpdates = true;
+      if (Array.isArray(req.body.existingImages)) {
+        allImages = [...req.body.existingImages];
+      } else {
+        allImages.push(req.body.existingImages);
+      }
+    } else if (req.body.hasExistingImages === 'true') {
+        hasImageUpdates = true;
+    }
+    
+    // New uploaded images
+    if (req.files && Array.isArray(req.files)) {
+      hasImageUpdates = true;
+      const files = req.files as Express.Multer.File[];
+      allImages = [...allImages, ...files.map(file => `/uploads/${file.filename}`)];
+    }
+    
+    if (hasImageUpdates) {
+      req.body.images = allImages;
+    }
+    
     const listing = await marketplaceService.updateListing(req.user!.userId, id as string, req.body);
     res.status(HttpStatus.OK).json({ success: true, message: 'Listing updated successfully', data: listing });
   } catch (error) {
@@ -25,6 +73,17 @@ export const getListingById = async (req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const listing = await marketplaceService.getListingById(id as string);
+    
+    // Track LISTING_VIEW
+    if (req.user) {
+      RecommendationService.trackInteraction(
+        req.user!.userId,
+        InteractionType.LISTING_VIEW,
+        id as string,
+        'MarketplaceListing'
+      );
+    }
+
     res.status(HttpStatus.OK).json({ success: true, message: 'Listing retrieved successfully', data: listing });
   } catch (error) {
     next(error);

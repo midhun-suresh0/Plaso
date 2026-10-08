@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoInput } from '../components/PlasoInput';
@@ -10,14 +10,24 @@ import { theme } from '../constants/theme';
 import { businessApi } from '../services/businessApi';
 import { BUSINESS_CATEGORIES } from '../constants/businessCategories';
 import { useAuth } from '../context/AuthContext';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from '../components/MapProxy';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type RouteProps = NativeStackScreenProps<RootStackParamList, 'EditBusiness'>['route'];
 
 const EditBusinessScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
+  const businessId = route.params?.businessId;
+
   const { user } = useAuth();
-  const location = user?.location?.coordinates ? { longitude: user.location.coordinates[0], latitude: user.location.coordinates[1] } : null;
+  
+  const initialLoc = user?.location?.coordinates 
+    ? { longitude: user.location.coordinates[0], latitude: user.location.coordinates[1] } 
+    : { longitude: 76.2673, latitude: 9.9312 }; // Kochi default
+
+  const [mapLocation, setMapLocation] = useState(initialLoc);
   
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -36,13 +46,17 @@ const EditBusinessScreen = () => {
   });
 
   useEffect(() => {
-    checkExistingBusiness();
-  }, []);
+    if (businessId) {
+      loadBusiness(businessId);
+    } else {
+      setInitialLoading(false);
+    }
+  }, [businessId]);
 
-  const checkExistingBusiness = async () => {
+  const loadBusiness = async (id: string) => {
     try {
       setInitialLoading(true);
-      const data: any = await businessApi.getMyBusiness();
+      const data: any = await businessApi.getBusinessById(id);
       if (data.success && data.data) {
         setIsEditing(true);
         setFormData({
@@ -83,27 +97,22 @@ const EditBusinessScreen = () => {
       return;
     }
 
-    if (!isEditing && !location) {
-      showAlert('Error', 'Location is required to register a business. Please enable location services.');
-      return;
-    }
+    // Location is managed by mapLocation state
 
     try {
       setLoading(true);
       
       const payload: any = { ...formData };
       
-      // If creating new, we must include the location
-      if (!isEditing) {
-        payload.location = {
-          type: 'Point',
-          coordinates: [location!.longitude, location!.latitude]
-        };
-      }
+      // Send location directly from mapLocation state
+      payload.location = {
+        type: 'Point',
+        coordinates: [mapLocation.longitude, mapLocation.latitude]
+      };
 
       let response: any;
-      if (isEditing) {
-        response = await businessApi.updateMyBusiness(payload);
+      if (isEditing && businessId) {
+        response = await businessApi.updateMyBusiness(businessId, payload);
       } else {
         response = await businessApi.createBusiness(payload);
       }
@@ -211,6 +220,28 @@ const EditBusinessScreen = () => {
           onChangeText={(text) => handleChange('address', text)}
         />
 
+        <Text style={styles.mapLabel}>Business Location on Map *</Text>
+        <Text style={styles.subText}>Drag the map to pinpoint your exact business location.</Text>
+        <View style={styles.mapWrapper}>
+          <MapView 
+            style={styles.map}
+            initialRegion={{
+              latitude: mapLocation.latitude,
+              longitude: mapLocation.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+            onRegionChangeComplete={(region) => {
+              setMapLocation({ latitude: region.latitude, longitude: region.longitude });
+            }}
+          >
+            <Marker coordinate={mapLocation} />
+          </MapView>
+          <View style={styles.mapCenterMarker} pointerEvents="none">
+             <Ionicons name="location" size={32} color={theme.colors.primary} />
+          </View>
+        </View>
+
         <View style={styles.divider} />
 
         <Text style={styles.sectionTitle}>Branding (Image URLs)</Text>
@@ -306,7 +337,40 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.lg,
-  }
+  },
+  mapLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  subText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  mapWrapper: {
+    height: 200,
+    borderRadius: theme.radii.md,
+    overflow: 'hidden',
+    marginTop: theme.spacing.sm,
+    position: 'relative',
+  },
+  map: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  mapCenterMarker: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -16,
+    marginTop: -32,
+  },
 });
 
 export default EditBusinessScreen;

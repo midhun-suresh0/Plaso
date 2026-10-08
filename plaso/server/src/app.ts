@@ -17,6 +17,10 @@ import cartRoutes from './routes/cart.routes';
 import orderRoutes from './routes/order.routes';
 import paymentRoutes from './routes/payment.routes';
 import reviewRoutes from './routes/review.routes';
+import messageRoutes from './routes/message.routes';
+import storyRoutes from './routes/story.routes';
+import recommendationRoutes from './routes/recommendation.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app = express();
 
@@ -50,6 +54,10 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/conversations', messageRoutes);
+app.use('/api/stories', storyRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

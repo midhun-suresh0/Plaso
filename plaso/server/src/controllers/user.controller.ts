@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../services/user.service';
 import { AppError, HttpStatus } from '../types';
+import { RecommendationService } from '../services/recommendation.service';
+import { InteractionType } from '../models/userInteraction.model';
 
 export class UserController {
   /**
@@ -143,6 +145,16 @@ export class UserController {
       if (!followerId) throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
 
       const followed = await UserService.followUser(followerId, followingId);
+      
+      if (followed) {
+        RecommendationService.trackInteraction(
+          followerId,
+          InteractionType.USER_FOLLOW,
+          followingId,
+          'User'
+        );
+      }
+
       res.status(HttpStatus.OK).json({ success: true, data: { followed } });
     } catch (error) {
       next(error);

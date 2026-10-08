@@ -24,8 +24,8 @@ export default function BusinessOrdersScreen() {
   const fetchOrders = async () => {
     try {
       const response = await orderApi.getBusinessOrders(businessId);
-      if (response.success && response.data) {
-        setOrders(response.data!.orders);
+      if (response.success && (response as any).orders) {
+        setOrders((response as any).orders);
       }
     } catch (error) {
       console.error('Error fetching business orders:', error);
@@ -43,9 +43,9 @@ export default function BusinessOrdersScreen() {
     setUpdatingId(orderId);
     try {
       const response = await orderApi.updateBusinessOrderStatus(orderId, status);
-      if (response.success && response.data) {
+      if (response.success && (response as any).order) {
         // Update locally
-        setOrders(prev => prev.map(o => o._id === orderId ? response.data!.order : o));
+        setOrders(prev => prev.map(o => o._id === orderId ? (response as any).order : o));
       }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to update order status');
@@ -138,7 +138,7 @@ export default function BusinessOrdersScreen() {
       <View style={styles.orderCard}>
         <View style={styles.orderHeader}>
           <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
-          <PlasoChip label={item.orderStatus} style={{ backgroundColor: getStatusColor(item.orderStatus), borderColor: getStatusColor(item.orderStatus) }} />
+          <PlasoChip label={item.orderStatus} style={{ backgroundColor: getStatusColor(item.orderStatus), borderColor: getStatusColor(item.orderStatus) }} selected={true} />
         </View>
 
         <TouchableOpacity 

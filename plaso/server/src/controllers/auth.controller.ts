@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
+import { OAuth2Client } from 'google-auth-library';
 import User, { UserRole } from '../models/user.model';
 import { AuthService } from '../services/auth.service';
 import { AppError, HttpStatus } from '../types';
 import { emailService } from '../services/email.service';
 import { UserService } from '../services/user.service';
+import env from '../config/env';
+
+const googleClient = new OAuth2Client(env.googleClientId);
 
 export class AuthController {
   /**
@@ -93,6 +97,10 @@ export class AuthController {
         throw new AppError('Account is inactive', HttpStatus.FORBIDDEN);
       }
 
+      if (!user.passwordHash) {
+        throw new AppError('This account uses Google Sign-In. Please continue with Google.', HttpStatus.UNAUTHORIZED);
+      }
+
       // Verify password
       const isPasswordValid = await AuthService.comparePassword(password, user.passwordHash);
       if (!isPasswordValid) {
@@ -115,6 +123,75 @@ export class AuthController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  /**
+   * Google Sign-In / Sign-Up
+   * POST /api/auth/google
+   */
+  static async googleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        throw new AppError('Google ID token is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Verify Google token
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        // We do not strict-match audience here if we use multiple client IDs (Android/Web),
+        // but verifyIdToken checks signature and expiration.
+        // If we want strict check: audience: env.googleClientId
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        throw new AppError('Invalid Google token or email missing', HttpStatus.UNAUTHORIZED);
+      }
+
+      const { email, sub: googleId, name, picture } = payload;
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check if user exists
+      let user = await User.findOne({ email: normalizedEmail });
+
+      if (user) {
+        // Link Google ID if not already linked
+        if (!user.googleId) {
+          user.googleId = googleId;
+          await user.save();
+        } else if (user.googleId !== googleId) {
+          throw new AppError('Email is associated with a different Google account', HttpStatus.CONFLICT);
+        }
+      } else {
+        // Create new Google user
+        user = await User.create({
+          name: name || 'Google User',
+          email: normalizedEmail,
+          googleId,
+          role: UserRole.USER,
+          profileImage: picture || '',
+        });
+      }
+
+      // Generate Plaso JWT
+      const token = AuthService.generateToken(user);
+
+      res.status(HttpStatus.OK).json({
+        success: true,
+        message: 'Google login successful',
+        data: {
+          token,
+          user: {
+            ...user.toJSON(),
+            id: user._id,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Google Auth Error:', error);
+      next(new AppError('Google authentication failed', HttpStatus.UNAUTHORIZED));
     }
   }
 
@@ -183,6 +260,10 @@ export class AuthController {
           message: 'If that email is registered, a reset link has been sent.',
         });
         return;
+      }
+
+      if (!user.passwordHash) {
+        throw new AppError('This account uses Google Sign-In. Please continue with Google.', HttpStatus.BAD_REQUEST);
       }
 
       // Generate 6-digit OTP

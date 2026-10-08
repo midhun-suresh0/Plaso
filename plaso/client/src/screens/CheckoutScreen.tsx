@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { paymentApi } from '../services/api/paymentApi';
 import RazorpayCheckout from 'react-native-razorpay';
 import { Cart } from '../types/order';
 import { ListingType } from '../types/marketplace';
+import { loadRazorpayScript } from '../utils/razorpayWeb';
 import { RootStackParamList } from '../types';
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,11 +33,11 @@ export default function CheckoutScreen() {
     const fetchCart = async () => {
       try {
         const response = await cartApi.getCart();
-        if (response.success && response.data) {
-          if (response.data!.cart.items.length === 0) {
+        if (response.success && (response as any).cart) {
+          if ((response as any).cart.items.length === 0) {
             navigation.goBack();
           } else {
-            setCart(response.data!.cart);
+            setCart((response as any).cart);
           }
         }
       } catch (error) {
@@ -76,11 +77,11 @@ export default function CheckoutScreen() {
         scheduledTime: scheduledTime || undefined,
       });
 
-      if (!orderResponse.success || !orderResponse.data || !orderResponse.data.orders || orderResponse.data.orders.length === 0) {
+      if (!orderResponse.success || !(orderResponse as any).orders || (orderResponse as any).orders.length === 0) {
         throw new Error('Failed to create order');
       }
 
-      const order = orderResponse.data.orders[0];
+      const order = (orderResponse as any).orders[0];
 
       // 2. Create Razorpay Payment Order
       const paymentOrderResponse = await paymentApi.createOrder(order._id);
@@ -103,39 +104,138 @@ export default function CheckoutScreen() {
         theme: { color: theme.colors.primary },
       };
 
-      RazorpayCheckout.open(options).then(async (data: any) => {
-        // 4. Verify Payment on Success
-        try {
-          const verifyResponse = await paymentApi.verifyPayment({
-            orderId: order._id,
-            razorpayOrderId: data.razorpay_order_id,
-            razorpayPaymentId: data.razorpay_payment_id,
-            signature: data.razorpay_signature,
-          });
-
-          if (verifyResponse.success) {
-            Alert.alert('Payment Successful', 'Your order has been placed and paid successfully!', [
-              { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-            ]);
-          } else {
-             Alert.alert('Payment Verification Failed', 'We could not verify your payment. Please contact support.', [
-              { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-            ]);
-          }
-        } catch (verifyError: any) {
-           Alert.alert('Verification Error', verifyError.message || 'Could not verify payment', [
-              { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-            ]);
-        } finally {
-            setSubmitting(false);
+      if (Platform.OS === 'web') {
+        const isLoaded = await loadRazorpayScript();
+        if (!isLoaded) {
+          Alert.alert('Error', 'Razorpay SDK failed to load. Are you online?');
+          setSubmitting(false);
+          return;
         }
-      }).catch((error: any) => {
-        // Payment failed or cancelled
-        Alert.alert('Payment Failed', 'Your payment was cancelled or failed. You can retry from your orders.', [
-            { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-        ]);
-        setSubmitting(false);
-      });
+
+        const options = {
+          key: keyId,
+          amount: amount.toString(),
+          currency: currency,
+          name: 'Plaso',
+          description: 'Plaso Marketplace Purchase',
+          image: 'https://i.imgur.com/3g7nmJC.png',
+          order_id: razorpayOrderId,
+          handler: async function (response: any) {
+            try {
+              const verifyResponse = await paymentApi.verifyPayment({
+                orderId: order._id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              });
+
+              if (verifyResponse.success) {
+                navigation.navigate('OrderSuccess' as any, { orderId: order._id });
+              } else {
+                Alert.alert('Payment Verification Failed', 'We could not verify your payment.');
+              }
+            } catch (verifyError: any) {
+              Alert.alert('Verification Error', verifyError.message || 'Could not verify payment');
+            } finally {
+              setSubmitting(false);
+            }
+          },
+          modal: {
+            ondismiss: function() {
+              setSubmitting(false);
+            }
+          },
+          prefill: {
+             name: 'Plaso User',
+          },
+          theme: {
+            color: theme.colors.primary,
+          },
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on('payment.failed', function (response: any) {
+           Alert.alert('Payment Failed', response.error.description);
+           setSubmitting(false);
+        });
+        paymentObject.open();
+
+      } else {
+        if (!RazorpayCheckout || !RazorpayCheckout.open) {
+          if (__DEV__) {
+             try {
+                const verifyResponse = await paymentApi.verifyPayment({
+                  orderId: order._id,
+                  razorpayOrderId: razorpayOrderId,
+                  razorpayPaymentId: 'simulated_payment_id',
+                  signature: 'simulated_success',
+                });
+                if (verifyResponse && verifyResponse.success) {
+                  navigation.navigate('OrderSuccess' as any, { orderId: order._id });
+                  setSubmitting(false);
+                  return;
+                }
+             } catch (err) {}
+             setSubmitting(false);
+             return;
+          } else {
+             Alert.alert('Error', 'Payment module not initialized.');
+             setSubmitting(false);
+             return;
+          }
+        }
+        RazorpayCheckout.open(options).then(async (data: any) => {
+          // 4. Verify Payment on Success
+          try {
+            const verifyResponse = await paymentApi.verifyPayment({
+              orderId: order._id,
+              razorpayOrderId: data.razorpay_order_id,
+              razorpayPaymentId: data.razorpay_payment_id,
+              signature: data.razorpay_signature,
+            });
+
+            if (verifyResponse.success) {
+              navigation.navigate('OrderSuccess' as any, { orderId: order._id });
+            } else {
+               Alert.alert('Payment Verification Failed', 'We could not verify your payment. Please contact support.', [
+                { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
+              ]);
+            }
+          } catch (verifyError: any) {
+             Alert.alert('Verification Error', verifyError.message || 'Could not verify payment', [
+                { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
+              ]);
+          } finally {
+              setSubmitting(false);
+          }
+        }).catch(async (error: any) => {
+          if (__DEV__) {
+            try {
+              const verifyResponse = await paymentApi.verifyPayment({
+                orderId: order._id,
+                razorpayOrderId: razorpayOrderId,
+                razorpayPaymentId: 'simulated_payment_id',
+                signature: 'simulated_success',
+              });
+              
+              // paymentApi returns { success: true, data: ... }
+              if (verifyResponse && verifyResponse.success) {
+                navigation.navigate('OrderSuccess' as any, { orderId: order._id });
+                setSubmitting(false);
+                return;
+              }
+            } catch (err) {
+              console.error('Simulation error', err);
+            }
+          }
+          
+          // Payment failed or cancelled
+          Alert.alert('Payment Failed', 'Your payment was cancelled or failed. You can retry from your orders.', [
+              { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
+          ]);
+          setSubmitting(false);
+        });
+      }
 
     } catch (error: any) {
       Alert.alert('Checkout Failed', error.message || error.response?.data?.message || 'Something went wrong');

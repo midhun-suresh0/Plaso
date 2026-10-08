@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +24,7 @@ import { reviewApi } from '../services/api/reviewApi';
 import { MarketplaceListing, ListingType, PriceType, AvailabilityStatus } from '../types/marketplace';
 import { Review, ReviewStats } from '../types/review';
 import { getMarketplaceCategoryLabel } from '../constants/marketplaceCategories';
+import { getImageUrl } from '../utils';
 
 type RouteProps = RouteProp<RootStackParamList, 'ListingDetails'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -94,18 +96,29 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
     setAddingToCart(true);
     try {
       const res = await cartApi.addItem(listing._id, 1);
-      if (res.success) {
+      if ((res as any).success) {
         if (goToCheckout) {
           navigation.navigate('Cart' as any);
         } else {
-          Alert.alert('Success', 'Added to cart', [
-            { text: 'Keep Shopping', style: 'cancel' },
-            { text: 'View Cart', onPress: () => navigation.navigate('Cart' as any) }
-          ]);
+          if (Platform.OS === 'web') {
+            window.alert('Added to cart');
+          } else {
+            Alert.alert('Success', 'Added to cart', [
+              { text: 'Keep Shopping', style: 'cancel' },
+              { text: 'View Cart', onPress: () => navigation.navigate('Cart' as any) }
+            ]);
+          }
         }
+      } else {
+        throw new Error((res as any).message || 'Failed to add to cart');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to add to cart');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to add to cart';
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
     } finally {
       setAddingToCart(false);
     }
@@ -156,7 +169,7 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
                 scrollEventThrottle={16}
               >
                 {listing.images.map((img, idx) => (
-                  <Image key={idx} source={{ uri: img }} style={styles.mainImage} resizeMode="cover" />
+                  <Image key={idx} source={{ uri: getImageUrl(img) }} style={styles.mainImage} resizeMode="cover" />
                 ))}
               </ScrollView>
 
@@ -246,7 +259,7 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
           >
             <View style={styles.businessLogoContainer}>
               {listing.business.logo ? (
-                <Image source={{ uri: listing.business.logo }} style={styles.businessLogo} />
+                <Image source={{ uri: getImageUrl(listing.business.logo) }} style={styles.businessLogo} />
               ) : (
                 <MaterialIcons name="storefront" size={24} color={theme.colors.surface} />
               )}
@@ -301,10 +314,13 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
             {listing.type === ListingType.PRODUCT ? (
               <>
                 <PlasoButton
-                  title="Add to Cart"
-                  onPress={() => handleAddToCart(false)}
+                  title="Message Seller"
+                  onPress={() => navigation.navigate('Chat', { 
+                    businessId: listing.business._id,
+                    targetUserId: (listing.business as any).owner,
+                    listingId: listing._id
+                  })}
                   variant="secondary"
-                  loading={addingToCart}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <PlasoButton
@@ -315,12 +331,24 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
                 />
               </>
             ) : (
-              <PlasoButton
-                title="Request Service"
-                onPress={() => handleAddToCart(true)}
-                loading={addingToCart}
-                style={{ flex: 1 }}
-              />
+              <>
+                <PlasoButton
+                  title="Message"
+                  onPress={() => navigation.navigate('Chat', { 
+                    businessId: listing.business._id,
+                    targetUserId: (listing.business as any).owner,
+                    listingId: listing._id
+                  })}
+                  variant="secondary"
+                  style={{ flex: 1, marginRight: 8 }}
+                />
+                <PlasoButton
+                  title="Request Service"
+                  onPress={() => handleAddToCart(true)}
+                  loading={addingToCart}
+                  style={{ flex: 1 }}
+                />
+              </>
             )}
           </>
         ) : (

@@ -27,7 +27,7 @@ const BusinessDiscoveryScreen = () => {
 
   useEffect(() => {
     fetchBusinesses();
-  }, [selectedCategory, location]);
+  }, [selectedCategory, location?.longitude, location?.latitude]);
 
   const fetchBusinesses = async () => {
     try {
@@ -165,10 +165,22 @@ const BusinessDiscoveryScreen = () => {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
+      ) : !location ? (
+        <View style={styles.centerContainer}>
+          <MaterialIcons name="location-off" size={64} color={theme.colors.surfaceHighlight} />
+          <Text style={styles.emptyText}>Location required to explore nearby businesses.</Text>
+          <TouchableOpacity 
+            style={[styles.categoryChipSelected, { marginTop: 24, paddingVertical: 12, paddingHorizontal: 24 }]}
+            onPress={() => navigation.navigate('EditProfile' as any)}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Update Location</Text>
+          </TouchableOpacity>
+        </View>
       ) : businesses.length === 0 ? (
         <View style={styles.centerContainer}>
           <MaterialIcons name="storefront" size={64} color={theme.colors.surfaceHighlight} />
           <Text style={styles.emptyText}>No businesses found nearby.</Text>
+          <Text style={{ color: theme.colors.textSecondary, marginTop: 8, fontSize: 12 }}>Try expanding your discovery radius in profile settings.</Text>
         </View>
       ) : (
         <FlatList

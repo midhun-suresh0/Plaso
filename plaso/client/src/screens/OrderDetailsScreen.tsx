@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,24 +15,39 @@ import { RootStackParamList } from '../types';
 
 type OrderDetailsRouteProp = RouteProp<RootStackParamList, 'OrderDetails' & any>; // I'll use any to bypass strict type since I haven't updated RootStackParamList yet
 
+import { useAuth } from '../context/AuthContext';
+
 export default function OrderDetailsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<any>();
   const { orderId, isAdminView } = route.params;
+  const { user } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [review, setReview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
+  // Custom UI Modals for Web
+  const [confirmDialog, setConfirmDialog] = useState<{title: string, message: string, confirmText: string, isDestructive?: boolean, onConfirm: () => void} | null>(null);
+  const [alertDialog, setAlertDialog] = useState<{title: string, message: string} | null>(null);
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      setAlertDialog({ title, message });
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const fetchOrder = async () => {
     try {
       const response = await orderApi.getOrderById(orderId);
-      if (response.success && response.data) {
-        setOrder(response.data!.order);
+      if (response.success && (response as any).order) {
+        setOrder((response as any).order);
         
         // Fetch review if eligible
-        if (response.data!.order.orderStatus === OrderStatus.COMPLETED && !isAdminView) {
+        if ((response as any).order.orderStatus === OrderStatus.COMPLETED && !isAdminView) {
           try {
             const reviewRes = await reviewApi.getReviewByOrder(orderId);
             if (reviewRes.success && reviewRes.data) {
@@ -56,101 +71,131 @@ export default function OrderDetailsScreen() {
     fetchOrder();
   }, [orderId]);
 
-  const handleCancel = async () => {
-    Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
-      { text: 'No', style: 'cancel' },
-      { 
-        text: 'Yes, Cancel', 
-        style: 'destructive',
-        onPress: async () => {
-          setUpdating(true);
-          try {
-            const response = await orderApi.cancelOrder(orderId, 'Cancelled by user from details screen');
-            if (response.success && response.data) {
-              setOrder(response.data!.order);
-              Alert.alert('Success', 'Order cancelled');
-            }
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to cancel order');
-          } finally {
-            setUpdating(false);
-          }
-        }
+  const executeCancel = async () => {
+    setUpdating(true);
+    try {
+      const response = await orderApi.cancelOrder(orderId, 'Cancelled by user from details screen');
+      if (response.success && (response as any).order) {
+        setOrder((response as any).order);
+        showAlert('Success', 'Order cancelled');
       }
-    ]);
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (Platform.OS === 'web') {
+      setConfirmDialog({
+        title: 'Cancel Order',
+        message: 'Are you sure you want to cancel this order?',
+        confirmText: 'Yes, Cancel',
+        isDestructive: true,
+        onConfirm: executeCancel
+      });
+    } else {
+      Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Cancel', style: 'destructive', onPress: executeCancel }
+      ]);
+    }
+  };
+
+  const executeConfirm = async () => {
+    setUpdating(true);
+    try {
+      const response = await orderApi.confirmOrderCompletion(orderId);
+      if (response.success && (response as any).order) {
+        setOrder((response as any).order);
+        showAlert('Success', 'Order marked as completed!');
+      }
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || 'Failed to complete order');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleConfirmCompletion = async () => {
-    Alert.alert('Confirm Completion', 'Have you received your order/service?', [
-      { text: 'No, not yet', style: 'cancel' },
-      {
-        text: 'Yes, Completed',
-        onPress: async () => {
-          setUpdating(true);
-          try {
-            const response = await orderApi.confirmOrderCompletion(orderId);
-            if (response.success && response.data) {
-              setOrder(response.data!.order);
-              Alert.alert('Success', 'Order marked as completed!');
-            }
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to complete order');
-          } finally {
-            setUpdating(false);
-          }
-        }
-      }
-    ]);
+    if (Platform.OS === 'web') {
+      setConfirmDialog({
+        title: 'Confirm Completion',
+        message: 'Have you received your order/service?',
+        confirmText: 'Yes, Completed',
+        onConfirm: executeConfirm
+      });
+    } else {
+      Alert.alert('Confirm Completion', 'Have you received your order/service?', [
+        { text: 'No, not yet', style: 'cancel' },
+        { text: 'Yes, Completed', onPress: executeConfirm }
+      ]);
+    }
   };
 
+  const executeRefund = async () => {
+    setUpdating(true);
+    try {
+      const response = await paymentApi.refundOrder(orderId);
+      if (response.success && response.data) {
+        setOrder(prev => prev ? { ...prev, paymentStatus: PaymentStatus.REFUNDED } : null);
+        showAlert('Refund Processed', 'The amount has been refunded.');
+      }
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || error.message || 'Failed to refund order');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const handleRefund = async () => {
-    Alert.alert('Process Refund', 'Are you sure you want to refund this order?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Refund',
-        style: 'destructive',
-        onPress: async () => {
-          setUpdating(true);
-          try {
-            const response = await paymentApi.refundOrder(orderId);
-            if (response.success && response.data) {
-              setOrder(prev => prev ? { ...prev, paymentStatus: PaymentStatus.REFUNDED } : null);
-              Alert.alert('Refund Processed', 'The amount has been refunded.');
-            }
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to refund order');
-          } finally {
-            setUpdating(false);
-          }
-        }
+    if (Platform.OS === 'web') {
+      setConfirmDialog({
+        title: 'Process Refund',
+        message: 'Are you sure you want to refund this order?',
+        confirmText: 'Refund',
+        isDestructive: true,
+        onConfirm: executeRefund
+      });
+    } else {
+      Alert.alert('Process Refund', 'Are you sure you want to refund this order?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Refund', style: 'destructive', onPress: executeRefund }
+      ]);
+    }
+  };
+
+  const executeDispute = async () => {
+    setUpdating(true);
+    try {
+      const response = await orderApi.disputeOrder(orderId, 'User requested dispute');
+      if (response.success && (response as any).order) {
+        setOrder((response as any).order);
+        showAlert('Dispute Submitted', 'Our team will review your dispute shortly.');
       }
-    ]);
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || 'Failed to dispute order');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleDispute = async () => {
-    // In a real app, this would open a modal to collect dispute reason
-    Alert.alert('Dispute Order', 'Are you sure you want to dispute this order? Admin will review it.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Dispute',
-        style: 'destructive',
-        onPress: async () => {
-          setUpdating(true);
-          try {
-            const response = await orderApi.disputeOrder(orderId, 'User requested dispute');
-            if (response.success && response.data) {
-              setOrder(response.data!.order);
-              Alert.alert('Dispute Submitted', 'Our team will review your dispute shortly.');
-            }
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to dispute order');
-          } finally {
-            setUpdating(false);
-          }
-        }
-      }
-    ]);
+    if (Platform.OS === 'web') {
+      setConfirmDialog({
+        title: 'Dispute Order',
+        message: 'Are you sure you want to dispute this order? Admin will review it.',
+        confirmText: 'Dispute',
+        isDestructive: true,
+        onConfirm: executeDispute
+      });
+    } else {
+      Alert.alert('Dispute Order', 'Are you sure you want to dispute this order? Admin will review it.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Dispute', style: 'destructive', onPress: executeDispute }
+      ]);
+    }
   };
 
   if (loading || !order) {
@@ -181,9 +226,10 @@ export default function OrderDetailsScreen() {
     }
   };
 
-  const canCancel = order.orderStatus === OrderStatus.PENDING || order.orderStatus === OrderStatus.CONFIRMED;
-  const canComplete = order.orderStatus === OrderStatus.READY;
-  const canDispute = ![OrderStatus.CANCELLED, OrderStatus.DISPUTED].includes(order.orderStatus);
+  const isBuyer = user?._id === (order.buyer?._id || order.buyer);
+  const canCancel = isBuyer && (order.orderStatus === OrderStatus.PENDING || order.orderStatus === OrderStatus.CONFIRMED);
+  const canComplete = isBuyer && order.orderStatus === OrderStatus.READY;
+  const canDispute = isBuyer && ![OrderStatus.CANCELLED, OrderStatus.DISPUTED].includes(order.orderStatus);
 
   return (
     <PlasoScreen>
@@ -204,6 +250,7 @@ export default function OrderDetailsScreen() {
              <PlasoChip 
                 label={`Order: ${order.orderStatus}`} 
                 style={{ backgroundColor: getStatusColor(order.orderStatus), borderColor: getStatusColor(order.orderStatus) }}
+                selected={true}
               />
               <View style={{width: 8}} />
               <PlasoChip 
@@ -244,21 +291,21 @@ export default function OrderDetailsScreen() {
           <Text style={styles.sectionTitle}>Fulfillment Details</Text>
           <Text style={styles.infoLabel}>Type: <Text style={styles.infoText}>{order.fulfillmentType.replace('_', ' ')}</Text></Text>
           
-          {order.deliveryAddress && (
+          {!!order.deliveryAddress && (
             <View style={{marginTop: 8}}>
               <Text style={styles.infoLabel}>Delivery Address:</Text>
               <Text style={styles.infoText}>{order.deliveryAddress}</Text>
             </View>
           )}
 
-          {(order.scheduledDate || order.scheduledTime) && (
+          {!!(order.scheduledDate || order.scheduledTime) && (
             <View style={{marginTop: 8}}>
               <Text style={styles.infoLabel}>Scheduled For:</Text>
               <Text style={styles.infoText}>{order.scheduledDate} {order.scheduledTime}</Text>
             </View>
           )}
 
-          {order.customerNote && (
+          {!!order.customerNote && (
             <View style={{marginTop: 8}}>
               <Text style={styles.infoLabel}>Note:</Text>
               <Text style={styles.infoText}>{order.customerNote}</Text>
@@ -330,6 +377,44 @@ export default function OrderDetailsScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Web Modals */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{confirmDialog?.title}</Text>
+            <Text style={styles.modalMessage}>{confirmDialog?.message}</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setConfirmDialog(null)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalConfirmBtn, confirmDialog?.isDestructive && { backgroundColor: theme.colors.error }]} 
+                onPress={() => {
+                  if (confirmDialog?.onConfirm) confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+              >
+                <Text style={styles.modalConfirmText}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!alertDialog} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{alertDialog?.title}</Text>
+            <Text style={styles.modalMessage}>{alertDialog?.message}</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalConfirmBtn, { flex: 1 }]} onPress={() => setAlertDialog(null)}>
+                <Text style={styles.modalConfirmText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </PlasoScreen>
   );
 }
@@ -483,5 +568,62 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textDecorationLine: 'underline',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: theme.colors.text,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: theme.colors.white,
+    fontWeight: '600',
+    fontSize: 15,
   },
 });

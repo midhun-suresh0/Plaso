@@ -18,8 +18,8 @@ export default function AdminOrdersScreen() {
     const fetchOrders = async () => {
       try {
         const response = await orderApi.getAdminOrders();
-        if (response.success && response.data) {
-          setOrders(response.data!.orders);
+        if (response.success && (response as any).orders) {
+          setOrders((response as any).orders);
         }
       } catch (error) {
         console.error('Error fetching admin orders:', error);
@@ -47,7 +47,7 @@ export default function AdminOrdersScreen() {
       <View style={styles.orderCard}>
         <View style={styles.orderHeader}>
           <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
-          <PlasoChip label={item.orderStatus} style={{ backgroundColor: getStatusColor(item.orderStatus), borderColor: getStatusColor(item.orderStatus) }} />
+          <PlasoChip label={item.orderStatus} style={{ backgroundColor: getStatusColor(item.orderStatus), borderColor: getStatusColor(item.orderStatus) }} selected={true} />
         </View>
 
         <View style={styles.itemPreview}>

@@ -177,6 +177,17 @@ export default function ProfileScreen({ navigation }: Props) {
                     <View style={styles.divider} />
                     <TouchableOpacity 
                       style={styles.settingRow} 
+                      onPress={() => navigation.navigate('AdminDashboard')}
+                    >
+                      <Ionicons name="stats-chart-outline" size={20} color={theme.colors.primary} />
+                      <View style={styles.settingTextContainer}>
+                        <Text style={styles.settingLabel}>Analytics & Dashboard</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.divider} />
+                    <TouchableOpacity 
+                      style={styles.settingRow} 
                       onPress={() => navigation.navigate('AdminBusinesses')}
                     >
                       <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.primary} />
@@ -219,11 +230,49 @@ export default function ProfileScreen({ navigation }: Props) {
           <PlasoCard glass style={styles.settingsCard}>
             <TouchableOpacity 
               style={styles.settingRow} 
+              onPress={async () => {
+                try {
+                  const groups = await import('../services/api/storyApi').then(m => m.storyApi.getActiveStories());
+                  const myGroupIndex = groups.findIndex(g => g.id === user?._id && g.type === 'USER');
+                  if (myGroupIndex >= 0) {
+                    navigation.navigate('StoryViewer', { storyGroups: groups, initialGroupIndex: myGroupIndex });
+                  } else {
+                    Alert.alert('No Stories', "You don't have any active stories.");
+                  }
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to load stories');
+                }
+              }}
+            >
+              <Ionicons name="images-outline" size={20} color={theme.colors.primary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>My Stories</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            
+            <View style={styles.divider} />
+
+            <TouchableOpacity 
+              style={styles.settingRow} 
               onPress={() => navigation.navigate('SavedPosts')}
             >
               <Ionicons name="bookmark-outline" size={20} color={theme.colors.primary} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Saved Posts</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            
+            <View style={styles.divider} />
+            
+            <TouchableOpacity 
+              style={styles.settingRow} 
+              onPress={() => navigation.navigate('MyOrders')}
+            >
+              <Ionicons name="receipt-outline" size={20} color={theme.colors.primary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>My Orders</Text>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </View>
             </TouchableOpacity>

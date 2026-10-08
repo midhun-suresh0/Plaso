@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { MarketplaceListing, ListingType, PriceType, AvailabilityStatus } from '../types/marketplace';
 import { theme } from '../constants/theme';
 import { getMarketplaceCategoryLabel, getMarketplaceCategoryIcon } from '../constants/marketplaceCategories';
+import { getImageUrl } from '../utils';
 
 interface Props {
   listing: MarketplaceListing;
@@ -52,7 +53,7 @@ export const ListingCard: React.FC<Props> = ({ listing, onPress, style }) => {
     >
       <View style={styles.imageContainer}>
         {displayImage ? (
-          <Image source={{ uri: displayImage }} style={styles.image} resizeMode="cover" />
+          <Image source={{ uri: getImageUrl(displayImage) }} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={styles.placeholderImage}>
             <Ionicons name={type === ListingType.PRODUCT ? 'cube-outline' : 'briefcase-outline'} size={40} color={theme.colors.textSecondary} />

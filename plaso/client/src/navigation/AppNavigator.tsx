@@ -23,6 +23,7 @@ import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import EditBusinessScreen from '../screens/EditBusinessScreen';
 import AdminBusinessesScreen from '../screens/AdminBusinessesScreen';
 import AdminBusinessDetailsScreen from '../screens/AdminBusinessDetailsScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ListingDetailsScreen from '../screens/ListingDetailsScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
@@ -33,11 +34,18 @@ import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import MyOrdersScreen from '../screens/MyOrdersScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
+import OrderSuccessScreen from '../screens/OrderSuccessScreen';
 import BusinessOrdersScreen from '../screens/BusinessOrdersScreen';
 import AdminOrdersScreen from '../screens/AdminOrdersScreen';
 import CreateReviewScreen from '../screens/CreateReviewScreen';
 import MyReviewsScreen from '../screens/MyReviewsScreen';
 import AdminReviewsScreen from '../screens/AdminReviewsScreen';
+import ConversationListScreen from '../screens/ConversationListScreen';
+import ChatScreen from '../screens/ChatScreen';
+import { CreateStoryScreen } from '../screens/CreateStoryScreen';
+import { StoryViewerScreen } from '../screens/StoryViewerScreen';
+import PersonalizationSetupScreen from '../screens/PersonalizationSetupScreen';
+import MapDiscoveryScreen from '../screens/MapDiscoveryScreen';
 import { colors, theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -154,6 +162,11 @@ export default function AppNavigator(): React.JSX.Element {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="AdminDashboard"
+              component={AdminDashboardScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="Marketplace"
               component={MarketplaceScreen}
               options={{ headerShown: false }}
@@ -204,6 +217,11 @@ export default function AppNavigator(): React.JSX.Element {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="OrderSuccess"
+              component={OrderSuccessScreen}
+              options={{ headerShown: false, presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
               name="BusinessOrders"
               component={BusinessOrdersScreen}
               options={{ headerShown: false }}
@@ -226,6 +244,36 @@ export default function AppNavigator(): React.JSX.Element {
             <Stack.Screen
               name="AdminReviews"
               component={AdminReviewsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ConversationList"
+              component={ConversationListScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateStory"
+              component={CreateStoryScreen}
+              options={{ headerShown: false, presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
+              name="StoryViewer"
+              component={StoryViewerScreen}
+              options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
+            />
+            <Stack.Screen
+              name="PersonalizationSetup"
+              component={PersonalizationSetupScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="MapDiscovery"
+              component={MapDiscoveryScreen}
               options={{ headerShown: false }}
             />
           </>

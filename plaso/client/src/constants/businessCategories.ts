@@ -1,6 +1,6 @@
 export const BUSINESS_CATEGORIES = [
   { id: 'RESTAURANT', label: 'Restaurant', icon: 'restaurant' },
-  { id: 'CAFE', label: 'Cafe', icon: 'cafe' },
+  { id: 'CAFE', label: 'Cafe', icon: 'local-cafe' },
   { id: 'GROCERY', label: 'Grocery', icon: 'local-grocery-store' },
   { id: 'FASHION', label: 'Fashion', icon: 'checkroom' },
   { id: 'ELECTRONICS', label: 'Electronics', icon: 'devices' },

@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { BusinessService } from '../services/business.service';
 import { HttpStatus } from '../types';
 import { BusinessStatus } from '../models/business.model';
+import { RecommendationService } from '../services/recommendation.service';
+import { InteractionType } from '../models/userInteraction.model';
 
 export class BusinessController {
   // --- Business Owner Endpoints ---
@@ -16,11 +18,11 @@ export class BusinessController {
     }
   }
 
-  static async getMyBusiness(req: Request, res: Response, next: NextFunction) {
+  static async getOwnerBusinesses(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.user!.userId;
-      const business = await BusinessService.getOwnerBusiness(ownerId);
-      res.status(HttpStatus.OK).json({ success: true, data: business });
+      const businesses = await BusinessService.getOwnerBusinesses(ownerId);
+      res.status(HttpStatus.OK).json({ success: true, data: businesses });
     } catch (error) {
       next(error);
     }
@@ -29,7 +31,12 @@ export class BusinessController {
   static async updateMyBusiness(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.user!.userId;
-      const business = await BusinessService.updateBusiness(ownerId, req.body);
+      const { businessId, ...updateData } = req.body;
+      if (!businessId) {
+        res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'businessId is required' });
+        return;
+      }
+      const business = await BusinessService.updateBusiness(ownerId, businessId, updateData);
       res.status(HttpStatus.OK).json({ success: true, data: business });
     } catch (error) {
       next(error);
@@ -77,6 +84,17 @@ export class BusinessController {
     try {
       const { id } = req.params;
       const business = await BusinessService.getBusinessById(id as string);
+      
+      // If user is authenticated, track the view
+      if (req.user) {
+        RecommendationService.trackInteraction(
+          req.user!.userId,
+          InteractionType.BUSINESS_VIEW,
+          id as string,
+          'Business'
+        );
+      }
+
       res.status(HttpStatus.OK).json({ success: true, data: business });
     } catch (error) {
       next(error);

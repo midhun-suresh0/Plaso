@@ -74,4 +74,113 @@ export class DiscoveryService {
       }));
     }
   }
+
+  /**
+   * Get nearby entities (businesses, listings, posts)
+   */
+  static async getNearbyEntities(
+    lat: number, 
+    lng: number, 
+    radius: number, // in km
+    category?: string,
+    type?: string,
+    search?: string
+  ) {
+    const radiusInMeters = radius * 1000;
+    
+    // Default fetch all if type is not specified or is 'all'
+    const fetchBusinesses = !type || type === 'all' || type === 'businesses' || type === 'recommended';
+    const fetchListings = !type || type === 'all' || type === 'marketplace' || type === 'recommended';
+    const fetchPosts = !type || type === 'all' || type === 'posts' || type === 'recommended';
+
+    const results: any = {
+      businesses: [],
+      listings: [],
+      posts: []
+    };
+
+    const point = {
+      type: 'Point',
+      coordinates: [lng, lat]
+    };
+
+    // 1. Businesses
+    if (fetchBusinesses) {
+      let query: any = {
+        location: {
+          $near: {
+            $geometry: point,
+            $maxDistance: radiusInMeters
+          }
+        },
+        verificationStatus: 'APPROVED',
+        isActive: true
+      };
+
+      if (category && category !== 'All' && category !== 'Recommended') {
+        query.category = category;
+      }
+      
+      if (search) {
+        query.$text = { $search: search };
+      }
+
+      results.businesses = await mongoose.model('Business').find(query)
+        .select('name category coverImage logo address location rating isOpen')
+        .limit(50)
+        .lean();
+    }
+
+    // 2. Marketplace Listings
+    if (fetchListings) {
+      let query: any = {
+        location: {
+          $near: {
+            $geometry: point,
+            $maxDistance: radiusInMeters
+          }
+        },
+        isActive: true
+      };
+
+      if (category && category !== 'All' && category !== 'Recommended') {
+        query.category = category;
+      }
+      
+      if (search) {
+        query.$text = { $search: search };
+      }
+
+      results.listings = await mongoose.model('MarketplaceListing').find(query)
+        .select('title price images category location business')
+        .populate('business', 'name logo')
+        .limit(50)
+        .lean();
+    }
+
+    // 3. Posts (Public / Nearby)
+    if (fetchPosts) {
+      let query: any = {
+        location: {
+          $near: {
+            $geometry: point,
+            $maxDistance: radiusInMeters
+          }
+        },
+        visibility: { $in: ['PUBLIC', 'NEARBY'] }
+      };
+
+      if (search) {
+        query.$text = { $search: search };
+      }
+
+      results.posts = await mongoose.model('Post').find(query)
+        .select('content media location locationName author createdAt')
+        .populate('author', 'name username profileImage')
+        .limit(50)
+        .lean();
+    }
+
+    return results;
+  }
 }

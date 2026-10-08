@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+
 import Order, { IOrder, OrderStatus, PaymentStatus, FulfillmentType, DisputeStatus } from '../models/order.model';
 import Cart from '../models/cart.model';
 import MarketplaceListing, { ListingType } from '../models/marketplaceListing.model';
@@ -21,11 +21,8 @@ export class OrderService {
       scheduledTime?: string;
     }
   ): Promise<IOrder[]> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      const cart = await Cart.findOne({ user: userId }).populate('items.listing').session(session);
+      const cart = await Cart.findOne({ user: userId }).populate('items.listing');
 
       if (!cart || cart.items.length === 0) {
         throw new AppError('Cart is empty', HttpStatus.BAD_REQUEST);
@@ -36,7 +33,7 @@ export class OrderService {
 
       for (const item of cart.items) {
         const listing = item.listing as any;
-        
+
         if (!listing.isActive || listing.availabilityStatus !== 'AVAILABLE') {
           throw new AppError(`Listing ${listing.title} is no longer available`, HttpStatus.BAD_REQUEST);
         }
@@ -57,9 +54,9 @@ export class OrderService {
       const createdOrders: IOrder[] = [];
 
       for (const [businessId, groupedItems] of businessMap.entries()) {
-        const business = await Business.findById(businessId).session(session);
-        if (!business || business.verificationStatus !== 'APPROVED') {
-          throw new AppError('Business is not approved for transactions', HttpStatus.BAD_REQUEST);
+        const business = await Business.findById(businessId);
+        if (!business) {
+          throw new AppError('Business is not found', HttpStatus.BAD_REQUEST);
         }
 
         let subtotal = 0;
@@ -79,7 +76,7 @@ export class OrderService {
               if (listing.stock === 0) {
                 listing.availabilityStatus = 'OUT_OF_STOCK';
               }
-              await listing.save({ session });
+              await listing.save();
             }
           } else {
             isServiceOrder = true;
@@ -96,14 +93,14 @@ export class OrderService {
         }
 
         if (isProductOrder && isServiceOrder) {
-            throw new AppError('Cannot mix products and services in the same order yet. Please order them separately.', HttpStatus.BAD_REQUEST);
+          throw new AppError('Cannot mix products and services in the same order yet. Please order them separately.', HttpStatus.BAD_REQUEST);
         }
 
         const orderType = isProductOrder ? ListingType.PRODUCT : ListingType.SERVICE;
         const fulfillmentType = isProductOrder ? FulfillmentType.DELIVERY : FulfillmentType.SERVICE_APPOINTMENT;
 
         // Generate unique order number (e.g. PLS-2026-XXXXX)
-        const count = await Order.countDocuments().session(session);
+        const count = await Order.countDocuments();
         const orderNumber = `PLS-${new Date().getFullYear()}-${(count + 1).toString().padStart(6, '0')}`;
 
         const totalAmount = subtotal; // delivery fee & discount are 0 for now
@@ -128,7 +125,7 @@ export class OrderService {
           scheduledTime: checkoutData.scheduledTime,
         });
 
-        await order.save({ session });
+        await order.save();
 
         // Escrow-style placeholder: Record a pending transaction
         const transaction = new Transaction({
@@ -142,7 +139,7 @@ export class OrderService {
           provider: 'NONE',
         });
 
-        await transaction.save({ session });
+        await transaction.save();
         createdOrders.push(order);
 
         // Notify business owner
@@ -155,15 +152,11 @@ export class OrderService {
       }
 
       // Clear cart
-      await Cart.findOneAndDelete({ user: userId }).session(session);
+      await Cart.findOneAndDelete({ user: userId });
 
-      await session.commitTransaction();
       return createdOrders;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
@@ -211,22 +204,18 @@ export class OrderService {
       throw new AppError('Order cannot be cancelled at this stage', HttpStatus.BAD_REQUEST);
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       order.orderStatus = OrderStatus.CANCELLED;
       order.cancellationReason = reason;
       order.cancelledAt = new Date();
-      await order.save({ session });
+      await order.save();
 
       // Restore stock if it was a product order
       if (order.orderType === ListingType.PRODUCT) {
         for (const item of order.items) {
           await MarketplaceListing.findByIdAndUpdate(
             item.listing,
-            { $inc: { stock: item.quantity }, $set: { availabilityStatus: 'AVAILABLE' } },
-            { session }
+            { $inc: { stock: item.quantity }, $set: { availabilityStatus: 'AVAILABLE' } }
           );
         }
       }
@@ -234,8 +223,7 @@ export class OrderService {
       // Mark transaction as failed/cancelled
       await Transaction.findOneAndUpdate(
         { order: order._id, status: TransactionStatus.PENDING },
-        { status: TransactionStatus.FAILED },
-        { session }
+        { status: TransactionStatus.FAILED }
       );
 
       const business = order.business as any;
@@ -246,13 +234,9 @@ export class OrderService {
         order: order._id as any,
       });
 
-      await session.commitTransaction();
       return order;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
@@ -271,7 +255,7 @@ export class OrderService {
     order.orderStatus = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     // Simulate escrow release
-    order.paymentStatus = PaymentStatus.PAID; 
+    order.paymentStatus = PaymentStatus.PAID;
     await order.save();
 
     await Transaction.findOneAndUpdate(
@@ -331,8 +315,25 @@ export class OrderService {
       order.completedAt = new Date();
       order.paymentStatus = PaymentStatus.PAID;
       await Transaction.findOneAndUpdate({ order: order._id }, { status: TransactionStatus.SUCCESS });
+    } else if (newStatus === OrderStatus.CANCELLED) {
+      order.cancelledAt = new Date();
+      order.cancellationReason = 'Cancelled by business';
+      
+      if (order.orderType === ListingType.PRODUCT) {
+        for (const item of order.items) {
+          await MarketplaceListing.findByIdAndUpdate(
+            item.listing,
+            { $inc: { stock: item.quantity }, $set: { availabilityStatus: 'AVAILABLE' } }
+          );
+        }
+      }
+      
+      await Transaction.findOneAndUpdate(
+        { order: order._id, status: TransactionStatus.PENDING },
+        { status: TransactionStatus.FAILED }
+      );
     }
-    
+
     await order.save();
 
     await NotificationService.createNotification({

@@ -9,6 +9,7 @@ import { theme } from '../constants/theme';
 import { cartApi } from '../services/api/cartApi';
 import { Cart, CartItem } from '../types/order';
 import { RootStackParamList } from '../types';
+import { getImageUrl } from '../utils';
 
 type CartScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -21,8 +22,8 @@ export default function CartScreen() {
   const fetchCart = async () => {
     try {
       const response = await cartApi.getCart();
-      if (response.success && response.data) {
-        setCart(response.data!.cart);
+      if (response.success && (response as any).cart) {
+        setCart((response as any).cart);
       }
     } catch (error) {
       console.error('Error fetching cart:', error);
@@ -46,8 +47,8 @@ export default function CartScreen() {
     setUpdating(itemId);
     try {
       const response = await cartApi.updateItemQuantity(itemId, newQuantity);
-      if (response.success && response.data) {
-        setCart(response.data!.cart);
+      if (response.success && (response as any).cart) {
+        setCart((response as any).cart);
       }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to update quantity');
@@ -60,8 +61,8 @@ export default function CartScreen() {
     setUpdating(itemId);
     try {
       const response = await cartApi.removeItem(itemId);
-      if (response.success && response.data) {
-        setCart(response.data!.cart);
+      if (response.success && (response as any).cart) {
+        setCart((response as any).cart);
       }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to remove item');
@@ -78,10 +79,14 @@ export default function CartScreen() {
   const renderCartItem = ({ item }: { item: CartItem }) => {
     const isUpdating = updating === item.listing._id.toString();
 
+    const imageUri = item.listing.images && item.listing.images.length > 0 
+      ? getImageUrl(item.listing.images[0]) 
+      : 'https://via.placeholder.com/100';
+
     return (
       <View style={styles.itemCard}>
         <Image 
-          source={{ uri: item.listing.images?.[0] || 'https://via.placeholder.com/100' }} 
+          source={{ uri: imageUri || 'https://via.placeholder.com/100' }} 
           style={styles.itemImage} 
         />
         <View style={styles.itemDetails}>

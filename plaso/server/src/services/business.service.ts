@@ -7,11 +7,6 @@ export class BusinessService {
    * Create a new business
    */
   static async createBusiness(ownerId: string, data: Partial<IBusiness>): Promise<IBusiness> {
-    const existingBusiness = await Business.findOne({ owner: ownerId });
-    if (existingBusiness) {
-      return this.updateBusiness(ownerId, data);
-    }
-
     // Ensure slug is unique, simple slugification
     const baseSlug = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'business';
     let slug = baseSlug;
@@ -42,19 +37,19 @@ export class BusinessService {
   }
 
   /**
-   * Get the business owned by the user
+   * Get all businesses owned by the user
    */
-  static async getOwnerBusiness(ownerId: string): Promise<IBusiness | null> {
-    return Business.findOne({ owner: ownerId });
+  static async getOwnerBusinesses(ownerId: string): Promise<IBusiness[]> {
+    return Business.find({ owner: ownerId }).sort({ createdAt: -1 });
   }
 
   /**
    * Update owner's business
    */
-  static async updateBusiness(ownerId: string, data: Partial<IBusiness>): Promise<IBusiness> {
-    const business = await Business.findOne({ owner: ownerId });
+  static async updateBusiness(ownerId: string, businessId: string, data: Partial<IBusiness>): Promise<IBusiness> {
+    const business = await Business.findOne({ _id: businessId, owner: ownerId });
     if (!business) {
-      throw new AppError('Business not found', HttpStatus.NOT_FOUND);
+      throw new AppError('Business not found or unauthorized', HttpStatus.NOT_FOUND);
     }
 
     // Only allow updating certain fields

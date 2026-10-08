@@ -12,6 +12,7 @@ import { PlasoButton } from '../components/PlasoButton';
 import { marketplaceApi } from '../services/marketplaceApi';
 import { ListingType, PriceType, AvailabilityStatus, UpdateListingPayload } from '../types/marketplace';
 import { MARKETPLACE_CATEGORIES } from '../constants/marketplaceCategories';
+import { getImageUrl } from '../utils';
 
 type RouteProps = RouteProp<RootStackParamList, 'EditListing'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -78,18 +79,69 @@ export default function EditListingScreen({ navigation }: { navigation: Navigati
 
     try {
       setLoading(true);
-      const payload: UpdateListingPayload = {
-        type,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        price: numericPrice,
-        priceType,
-        availabilityStatus: availability,
-        images,
-        stock: type === ListingType.PRODUCT ? numericStock : undefined,
-        unit: type === ListingType.PRODUCT ? unit.trim() : undefined,
-      };
+      let payload: UpdateListingPayload | FormData;
+      
+      if (images.length > 0 || listing.images?.length > 0) {
+        const formData = new FormData();
+        formData.append('type', type);
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('category', category);
+        formData.append('price', numericPrice.toString());
+        formData.append('priceType', priceType);
+        formData.append('availabilityStatus', availability);
+        
+        if (type === ListingType.PRODUCT && numericStock !== undefined) {
+          formData.append('stock', numericStock.toString());
+        }
+        if (type === ListingType.PRODUCT && unit.trim()) {
+          formData.append('unit', unit.trim());
+        }
+
+        formData.append('hasExistingImages', 'true');
+        
+        // Handle images asynchronously to support web blobs
+        for (let index = 0; index < images.length; index++) {
+          const uri = images[index];
+          if (uri.startsWith('http') || uri.startsWith('/uploads/')) {
+            // Existing image
+            formData.append('existingImages', uri);
+          } else {
+            // New local file
+            const filename = uri.split('/').pop() || `image_${index}.jpg`;
+            const match = /\.(\w+)$/.exec(filename);
+            const ext = match ? match[1] : 'jpg';
+            const fileType = `image/${ext}`;
+            
+            if (Platform.OS === 'web') {
+              const response = await fetch(uri);
+              const blob = await response.blob();
+              formData.append('images', blob, filename);
+            } else {
+              formData.append('images', {
+                uri,
+                name: filename,
+                type: fileType,
+              } as any);
+            }
+          }
+        }
+        
+        payload = formData;
+      } else {
+        payload = {
+          type,
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          price: numericPrice,
+          priceType,
+          availabilityStatus: availability,
+          images: [],
+          stock: type === ListingType.PRODUCT ? numericStock : undefined,
+          unit: type === ListingType.PRODUCT ? unit.trim() : undefined,
+        };
+      }
 
       const response = await marketplaceApi.updateListing(listing._id, payload);
       
@@ -147,7 +199,7 @@ export default function EditListingScreen({ navigation }: { navigation: Navigati
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
               {images.map((img, idx) => (
                 <View key={idx} style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: img }} style={styles.imagePreview} />
+                  <Image source={{ uri: getImageUrl(img) }} style={styles.imagePreview} />
                   <TouchableOpacity style={styles.removeImageBtn} onPress={() => handleRemoveImage(idx)}>
                     <Ionicons name="close-circle" size={24} color={theme.colors.error} />
                   </TouchableOpacity>

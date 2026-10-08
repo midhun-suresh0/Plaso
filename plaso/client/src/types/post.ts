@@ -21,6 +21,7 @@ export interface Post {
   author: PostAuthor;
   isLiked?: boolean;
   isSaved?: boolean;
+  recommendationReason?: string;
 }
 
 export interface Comment {

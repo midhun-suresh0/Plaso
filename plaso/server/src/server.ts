@@ -4,6 +4,9 @@ import logger from './utils/logger';
 import { connectMongoDB, disconnectMongoDB } from './database/mongodb';
 import { connectNeo4j, disconnectNeo4j } from './database/neo4j';
 
+import http from 'http';
+import { initSocket } from './socket';
+
 /**
  * Start the Plaso API server.
  * Connects to databases and begins listening for requests.
@@ -11,13 +14,17 @@ import { connectNeo4j, disconnectNeo4j } from './database/neo4j';
 async function startServer(): Promise<void> {
   logger.info('Starting Plaso API...');
 
-  // Connect databases (non-blocking — server starts regardless)
+  // Connect databases (non-blocking server starts regardless)
   await connectMongoDB();
   await connectNeo4j();
 
+  // Create HTTP server and initialize Socket.IO
+  const server = http.createServer(app);
+  initSocket(server);
+
   // Start HTTP server
-  app.listen(env.port, '0.0.0.0', () => {
-    logger.success(`API: Running on port ${env.port} (0.0.0.0)`);
+  server.listen(env.port, '0.0.0.0', () => {
+    logger.success(`API & Socket.IO: Running on port ${env.port} (0.0.0.0)`);
     logger.info(`Environment: ${env.nodeEnv}`);
     logger.info(`Health check: http://localhost:${env.port}/api/health`);
   });

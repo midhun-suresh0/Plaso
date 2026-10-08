@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -17,21 +17,21 @@ const BusinessDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
   
-  const [business, setBusiness] = useState<any>(null);
+  const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchMyBusiness = async () => {
+  const fetchMyBusinesses = async () => {
     try {
       setLoading(true);
-      const data = await businessApi.getMyBusiness();
+      const data = await businessApi.getMyBusinesses();
       if ((data as any).success && (data as any).data) {
-        setBusiness((data as any).data);
+        setBusinesses((data as any).data);
       } else {
-        setBusiness(null);
+        setBusinesses([]);
       }
     } catch (error) {
       console.log('Error fetching business or no business found:', error);
-      setBusiness(null);
+      setBusinesses([]);
     } finally {
       setLoading(false);
     }
@@ -39,9 +39,23 @@ const BusinessDashboardScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      fetchMyBusiness();
+      fetchMyBusinesses();
     }, [])
   );
+
+  const toggleShopStatus = async (bus: any) => {
+    try {
+      const newStatus = !bus.isOpen;
+      const res = await businessApi.updateMyBusiness(bus._id, { isOpen: newStatus });
+      if ((res as any).success) {
+        setBusinesses(prev => prev.map(b => b._id === bus._id ? { ...b, isOpen: newStatus } : b));
+        Alert.alert('Success', `Shop is now ${newStatus ? 'Open' : 'Closed'}`);
+      }
+    } catch (error) {
+      console.log('Error updating shop status:', error);
+      Alert.alert('Error', 'Failed to update shop status');
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -63,7 +77,7 @@ const BusinessDashboardScreen = () => {
     );
   }
 
-  if (!business) {
+  if (businesses.length === 0) {
     return (
       <PlasoScreen>
         <View style={styles.header}>
@@ -87,82 +101,76 @@ const BusinessDashboardScreen = () => {
     <PlasoScreen>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('EditBusiness')}>
+          <MaterialIcons name="add" size={28} color={theme.colors.text} />
+        </TouchableOpacity>
       </View>
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Status Banner */}
-        {business.verificationStatus !== 'APPROVED' && (
-          <View style={[styles.statusBanner, { borderLeftColor: getStatusColor(business.verificationStatus) }]}>
-            <MaterialIcons name="info-outline" size={24} color={getStatusColor(business.verificationStatus)} />
-            <View style={styles.bannerTextContainer}>
-              <Text style={styles.bannerTitle}>Status: {business.verificationStatus}</Text>
-              <Text style={styles.bannerDesc}>
-                {business.verificationStatus === 'PENDING' ? 'Your business is awaiting admin approval.' :
-                 business.verificationStatus === 'REJECTED' ? 'Your business application was rejected.' :
-                 'Your business is suspended.'}
-              </Text>
-            </View>
-          </View>
-        )}
+        {businesses.map(business => (
+          <View key={business._id} style={{ marginBottom: theme.spacing.xl }}>
+            {/* Status Banner */}
+            {business.verificationStatus !== 'APPROVED' && (
+              <View style={[styles.statusBanner, { borderLeftColor: getStatusColor(business.verificationStatus) }]}>
+                <MaterialIcons name="info-outline" size={24} color={getStatusColor(business.verificationStatus)} />
+                <View style={styles.bannerTextContainer}>
+                  <Text style={styles.bannerTitle}>Status: {business.verificationStatus}</Text>
+                  <Text style={styles.bannerDesc}>
+                    {business.verificationStatus === 'PENDING' ? 'Your business is awaiting admin approval.' :
+                     business.verificationStatus === 'REJECTED' ? 'Your business application was rejected.' :
+                     'Your business is suspended.'}
+                  </Text>
+                </View>
+              </View>
+            )}
 
-        {/* Header Card */}
-        <PlasoCard style={styles.mainCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.businessName}>{business.name}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('BusinessProfile', { businessId: business._id })}>
-              <MaterialIcons name="visibility" size={24} color={theme.colors.primary} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.categoryText}>{business.category}</Text>
-          
-          <View style={styles.actionRow}>
-            <PlasoButton 
-              title="Edit Profile" 
-              variant="secondary"
-              onPress={() => navigation.navigate('EditBusiness')} 
-              style={styles.actionButton}
-            />
-            <PlasoButton 
-              title="Create Post" 
-              variant="primary"
-              onPress={() => navigation.navigate('CreatePost', { asBusiness: true })} 
-              disabled={business.verificationStatus !== 'APPROVED'}
-              style={styles.actionButton}
-            />
-          </View>
-          <PlasoButton 
-            title="Manage Listings" 
-            variant="secondary"
-            onPress={() => navigation.navigate('BusinessListings', { businessId: business._id })} 
-            disabled={business.verificationStatus !== 'APPROVED'}
-            style={{ marginTop: theme.spacing.md }}
-          />
-        </PlasoCard>
+            {/* Header Card */}
+            <PlasoCard style={styles.mainCard}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.businessName}>{business.name}</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('BusinessProfile', { businessId: business._id })}>
+                  <MaterialIcons name="visibility" size={24} color={theme.colors.primary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.categoryText}>{business.category}</Text>
 
-        {/* Stats Grid */}
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <PlasoCard style={styles.statCard}>
-            <MaterialIcons name="people" size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </PlasoCard>
-          <PlasoCard style={styles.statCard}>
-            <MaterialIcons name="article" size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </PlasoCard>
-          <PlasoCard style={styles.statCard}>
-            <MaterialIcons name="visibility" size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Profile Views</Text>
-          </PlasoCard>
-          <PlasoCard style={styles.statCard}>
-            <MaterialIcons name="touch-app" size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Engagements</Text>
-          </PlasoCard>
-        </View>
+              <View style={styles.shopStatusRow}>
+                <Text style={styles.shopStatusText}>
+                  Shop Status: {business.isOpen ? 'Open' : 'Closed'}
+                </Text>
+                <Switch
+                  value={business.isOpen}
+                  onValueChange={() => toggleShopStatus(business)}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.success }}
+                  thumbColor={theme.colors.surface}
+                />
+              </View>
+              
+              <View style={styles.actionRow}>
+                <PlasoButton 
+                  title="Edit Profile" 
+                  variant="secondary"
+                  onPress={() => navigation.navigate('EditBusiness', { businessId: business._id })} 
+                  style={styles.actionButton}
+                />
+                <PlasoButton 
+                  title="Create Post" 
+                  variant="primary"
+                  onPress={() => navigation.navigate('CreatePost', { asBusiness: true })} 
+                  disabled={business.verificationStatus !== 'APPROVED'}
+                  style={styles.actionButton}
+                />
+              </View>
+              <PlasoButton 
+                title="Manage Listings" 
+                variant="secondary"
+                onPress={() => navigation.navigate('BusinessListings', { businessId: business._id })} 
+                disabled={business.verificationStatus !== 'APPROVED'}
+                style={{ marginTop: theme.spacing.md }}
+              />
+            </PlasoCard>
+          </View>
+        ))}
       </ScrollView>
     </PlasoScreen>
   );
@@ -241,7 +249,21 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+  },
+  shopStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: theme.spacing.md,
+    borderRadius: theme.radii.md,
     marginBottom: theme.spacing.lg,
+  },
+  shopStatusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textLight,
   },
   actionRow: {
     flexDirection: 'row',

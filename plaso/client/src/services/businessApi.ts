@@ -14,6 +14,7 @@ export interface IBusinessData {
     latitude: number;
   };
   openingHours?: any;
+  isOpen?: boolean;
 }
 
 export const businessApi = {
@@ -22,12 +23,12 @@ export const businessApi = {
     return api.post('/businesses', data);
   },
 
-  getMyBusiness: async () => {
+  getMyBusinesses: async () => {
     return api.get('/businesses/owner/me');
   },
 
-  updateMyBusiness: async (data: Partial<IBusinessData>) => {
-    return api.patch('/businesses/owner/me', data);
+  updateMyBusiness: async (businessId: string, data: Partial<IBusinessData>) => {
+    return api.patch('/businesses/owner/me', { businessId, ...data });
   },
 
   // Admin Actions

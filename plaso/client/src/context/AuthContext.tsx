@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { tokenStorage } from '../services/tokenStorage';
 import { authApi, User } from '../services/authApi';
+import { socketService } from '../services/socket';
 
 interface AuthState {
   isLoading: boolean;
@@ -43,13 +44,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user: response.data.user,
           token,
         });
+        await socketService.connect();
       } else {
         // Token is invalid or expired
         await tokenStorage.removeToken();
+        socketService.disconnect();
         setState({ isLoading: false, isAuthenticated: false, user: null, token: null });
       }
     } catch (error) {
       console.error('Error checking auth:', error);
+      socketService.disconnect();
       setState({ isLoading: false, isAuthenticated: false, user: null, token: null });
     }
   };
@@ -66,10 +70,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       token,
     });
+    await socketService.connect();
   };
 
   const logout = async () => {
     await tokenStorage.removeToken();
+    socketService.disconnect();
     setState({
       isLoading: false,
       isAuthenticated: false,

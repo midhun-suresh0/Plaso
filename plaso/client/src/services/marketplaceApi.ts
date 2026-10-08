@@ -6,7 +6,7 @@ class MarketplaceApi {
   /**
    * Create a new marketplace listing
    */
-  async createListing(data: CreateListingPayload): Promise<ApiResponse<MarketplaceListing>> {
+  async createListing(data: CreateListingPayload | FormData): Promise<ApiResponse<MarketplaceListing>> {
     const response = await api.post<MarketplaceListing>('/marketplace', data);
     return response;
   }
@@ -14,7 +14,7 @@ class MarketplaceApi {
   /**
    * Update an existing listing
    */
-  async updateListing(id: string, data: UpdateListingPayload): Promise<ApiResponse<MarketplaceListing>> {
+  async updateListing(id: string, data: UpdateListingPayload | FormData): Promise<ApiResponse<MarketplaceListing>> {
     const response = await api.patch<MarketplaceListing>(`/marketplace/${id}`, data);
     return response;
   }

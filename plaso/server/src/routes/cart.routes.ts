@@ -5,9 +5,9 @@ import { UserRole } from '../models/user.model';
 
 const router = Router();
 
-// All cart routes require authentication and USER role
+// All cart routes require authentication and appropriate roles
 router.use(authenticate);
-router.use(authorize(UserRole.USER));
+router.use(authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN));
 
 router.get('/', CartController.getCart);
 router.post('/items', CartController.addItem);

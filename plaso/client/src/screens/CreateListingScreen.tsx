@@ -88,19 +88,63 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
 
     try {
       setLoading(true);
-      const payload: CreateListingPayload = {
-        businessId,
-        type,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        price: numericPrice,
-        priceType,
-        availabilityStatus: availability,
-        images,
-        stock: type === ListingType.PRODUCT ? numericStock : undefined,
-        unit: type === ListingType.PRODUCT ? unit.trim() : undefined,
-      };
+      let payload: CreateListingPayload | FormData;
+
+      if (images.length > 0) {
+        const formData = new FormData();
+        formData.append('businessId', businessId);
+        formData.append('type', type);
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('category', category);
+        formData.append('price', numericPrice.toString());
+        formData.append('priceType', priceType);
+        formData.append('availabilityStatus', availability);
+        
+        if (type === ListingType.PRODUCT && numericStock !== undefined) {
+          formData.append('stock', numericStock.toString());
+        }
+        if (type === ListingType.PRODUCT && unit.trim()) {
+          formData.append('unit', unit.trim());
+        }
+
+        // Handle images asynchronously to support web blobs
+        for (let index = 0; index < images.length; index++) {
+          const uri = images[index];
+          const filename = uri.split('/').pop() || `image_${index}.jpg`;
+          const match = /\.(\w+)$/.exec(filename);
+          const ext = match ? match[1] : 'jpg';
+          const fileType = `image/${ext}`;
+          
+          if (Platform.OS === 'web') {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            formData.append('images', blob, filename);
+          } else {
+            formData.append('images', {
+              uri,
+              name: filename,
+              type: fileType,
+            } as any);
+          }
+        }
+        
+        payload = formData;
+      } else {
+        payload = {
+          businessId,
+          type,
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          price: numericPrice,
+          priceType,
+          availabilityStatus: availability,
+          images: [],
+          stock: type === ListingType.PRODUCT ? numericStock : undefined,
+          unit: type === ListingType.PRODUCT ? unit.trim() : undefined,
+        };
+      }
 
       const response = await marketplaceApi.createListing(payload);
       

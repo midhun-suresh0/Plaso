@@ -12,5 +12,25 @@ export interface SuggestedUser {
 export const discoveryApi = {
   getSuggestedUsers: (limit: number = 5): Promise<ApiResponse<SuggestedUser[]>> => {
     return api.get(`/users/suggestions?limit=${limit}`);
+  },
+  
+  getNearbyEntities: (params: {
+    latitude: number;
+    longitude: number;
+    radius?: number;
+    category?: string;
+    type?: string;
+    search?: string;
+  }): Promise<ApiResponse<any>> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('latitude', params.latitude.toString());
+    queryParams.append('longitude', params.longitude.toString());
+    
+    if (params.radius) queryParams.append('radius', params.radius.toString());
+    if (params.category && params.category !== 'All') queryParams.append('category', params.category);
+    if (params.type && params.type !== 'All') queryParams.append('type', params.type.toLowerCase());
+    if (params.search) queryParams.append('search', params.search);
+
+    return api.get(`/nearby?${queryParams.toString()}`);
   }
 };

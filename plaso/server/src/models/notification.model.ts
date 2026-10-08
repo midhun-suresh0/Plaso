@@ -7,6 +7,7 @@ export enum NotificationType {
   MENTION = 'MENTION',
   ORDER_CREATED = 'ORDER_CREATED',
   ORDER_STATUS_UPDATED = 'ORDER_STATUS_UPDATED',
+  SYSTEM = 'SYSTEM',
 }
 
 export interface INotification extends Document {
@@ -16,6 +17,7 @@ export interface INotification extends Document {
   post?: mongoose.Types.ObjectId;
   comment?: mongoose.Types.ObjectId;
   order?: mongoose.Types.ObjectId;
+  message?: string;
   isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +51,9 @@ const NotificationSchema: Schema = new Schema(
     order: {
       type: Schema.Types.ObjectId,
       ref: 'Order',
+    },
+    message: {
+      type: String,
     },
     isRead: {
       type: Boolean,

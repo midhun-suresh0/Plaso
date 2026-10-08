@@ -12,6 +12,7 @@ import {
   getAllListingsForAdmin
 } from '../controllers/marketplace.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
+import { upload } from '../middleware/upload';
 
 const router = express.Router();
 
@@ -23,8 +24,8 @@ router.get('/:id', authenticate, getListingById);
 
 // Owner routes
 router.get('/me/listings', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), getOwnerListings);
-router.post('/', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), createListing);
-router.patch('/:id', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), updateListing);
+router.post('/', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), upload.array('images', 5), createListing);
+router.patch('/:id', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), upload.array('images', 5), updateListing);
 router.delete('/:id', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), deleteListing);
 router.patch('/:id/status', authenticate, authorize('BUSINESS_OWNER', 'ADMIN'), updateListingStatus);
 

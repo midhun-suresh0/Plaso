@@ -40,7 +40,7 @@ export class CartService {
     }
 
     const business = await Business.findById(listing.business);
-    if (!business || business.verificationStatus !== 'APPROVED') {
+    if (!business) {
       throw new AppError('Business is not active or approved', HttpStatus.BAD_REQUEST);
     }
 
@@ -61,11 +61,11 @@ export class CartService {
       if (existingItemIndex >= 0) {
         // Update quantity
         const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-        
+
         if (listing.stock !== undefined && listing.stock !== null && newQuantity > listing.stock) {
-            throw new AppError(`Cannot add more. Only ${listing.stock} items available in stock`, HttpStatus.BAD_REQUEST);
+          throw new AppError(`Cannot add more. Only ${listing.stock} items available in stock`, HttpStatus.BAD_REQUEST);
         }
-        
+
         cart.items[existingItemIndex].quantity = newQuantity;
       } else {
         // Add new item

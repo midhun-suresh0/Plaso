@@ -15,6 +15,7 @@ import { MarketplaceListing } from '../types/marketplace';
 import { ListingCard } from '../components/ListingCard';
 import { reviewApi } from '../services/api/reviewApi';
 import { Review, ReviewStats } from '../types/review';
+import { storyApi } from '../services/api/storyApi';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'BusinessProfile'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -29,6 +30,8 @@ const BusinessProfileScreen = () => {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [hasStory, setHasStory] = useState(false);
+  const [storyGroups, setStoryGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false); // Placeholder for follow logic
 
@@ -60,6 +63,16 @@ const BusinessProfileScreen = () => {
 
       if (reviewsData?.success && reviewsData.data) {
         setReviews(reviewsData.data.reviews);
+      }
+
+      // Fetch stories
+      try {
+        const stories = await storyApi.getActiveStories();
+        setStoryGroups(stories);
+        const groupIndex = stories.findIndex(g => g.type === 'BUSINESS' && g.business?._id === businessId);
+        setHasStory(groupIndex >= 0);
+      } catch (err) {
+        console.error('Failed to fetch stories for business', err);
       }
     } catch (error) {
       console.error('Error fetching business or listings:', error);
@@ -133,12 +146,32 @@ const BusinessProfileScreen = () => {
         {/* Profile Info Header */}
         <View style={styles.profileHeader}>
           <View style={styles.logoContainer}>
-            {business.logo ? (
-              <Image source={{ uri: business.logo }} style={styles.logo} />
+            {hasStory ? (
+              <TouchableOpacity
+                onPress={() => {
+                  const groupIndex = storyGroups.findIndex(g => g.type === 'BUSINESS' && g.business?._id === businessId);
+                  navigation.navigate('StoryViewer', { storyGroups, initialGroupIndex: groupIndex });
+                }}
+                style={{ borderWidth: 3, borderColor: theme.colors.primary, borderRadius: 50, padding: 2 }}
+              >
+                {business.logo ? (
+                  <Image source={{ uri: business.logo }} style={styles.logo} />
+                ) : (
+                  <View style={[styles.logo, styles.placeholderLogo]}>
+                    <MaterialIcons name="storefront" size={40} color={theme.colors.primary} />
+                  </View>
+                )}
+              </TouchableOpacity>
             ) : (
-              <View style={[styles.logo, styles.placeholderLogo]}>
-                <MaterialIcons name="storefront" size={40} color={theme.colors.primary} />
-              </View>
+              <>
+                {business.logo ? (
+                  <Image source={{ uri: business.logo }} style={styles.logo} />
+                ) : (
+                  <View style={[styles.logo, styles.placeholderLogo]}>
+                    <MaterialIcons name="storefront" size={40} color={theme.colors.primary} />
+                  </View>
+                )}
+              </>
             )}
           </View>
           
@@ -159,19 +192,42 @@ const BusinessProfileScreen = () => {
             </View>
             
             {isOwner ? (
-              <PlasoButton 
-                title="Edit Business" 
-                variant="secondary" 
-                 
-                onPress={() => navigation.navigate('EditBusiness')} 
-              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <PlasoButton 
+                  title="Edit Business" 
+                  variant="secondary" 
+                  onPress={() => navigation.navigate('EditBusiness')} 
+                  style={{ flex: 1 }}
+                />
+                <PlasoButton
+                  title={hasStory ? "View Story" : "Add Story"}
+                  variant="primary"
+                  onPress={() => {
+                    if (hasStory) {
+                      const groupIndex = storyGroups.findIndex(g => g.type === 'BUSINESS' && g.business?._id === businessId);
+                      navigation.navigate('StoryViewer', { storyGroups, initialGroupIndex: groupIndex });
+                    } else {
+                      navigation.navigate('CreateStory', { authorType: 'BUSINESS', businessId: business._id });
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                />
+              </View>
             ) : (
-              <PlasoButton 
-                title={isFollowing ? 'Following' : 'Follow'} 
-                variant={isFollowing ? 'secondary' : 'primary'} 
-                 
-                onPress={handleFollowToggle} 
-              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <PlasoButton 
+                  title="Message"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('Chat', { businessId: business._id, targetUserId: business.owner?._id || business.owner })}
+                  style={{ marginRight: 8 }}
+                />
+                <PlasoButton 
+                  title={isFollowing ? 'Following' : 'Follow'} 
+                  variant={isFollowing ? 'secondary' : 'primary'} 
+                   
+                  onPress={handleFollowToggle} 
+                />
+              </View>
             )}
           </View>
 

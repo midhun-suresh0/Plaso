@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../constants/theme';
 import { BlurView } from 'expo-blur';
 
-type Tab = 'home' | 'nearby';
+type Tab = 'home' | 'nearby' | 'trending';
 
 interface FeedTabsProps {
   activeTab: Tab;
@@ -41,6 +41,20 @@ export function FeedTabs({ activeTab, onTabChange }: FeedTabsProps) {
               ]}
             >
               Nearby
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'trending' && styles.activeTab]}
+            onPress={() => onTabChange('trending')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'trending' && styles.activeTabText,
+              ]}
+            >
+              Trending
             </Text>
           </TouchableOpacity>
         </View>

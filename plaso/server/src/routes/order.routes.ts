@@ -8,12 +8,12 @@ const router = Router();
 // All order routes require authentication
 router.use(authenticate);
 
-// USER routes
-router.post('/', authorize(UserRole.USER, UserRole.ADMIN), OrderController.createOrder);
-router.get('/', authorize(UserRole.USER, UserRole.ADMIN), OrderController.getMyOrders);
-router.patch('/:id/cancel', authorize(UserRole.USER, UserRole.ADMIN), OrderController.cancelOrder);
-router.patch('/:id/complete', authorize(UserRole.USER, UserRole.ADMIN), OrderController.confirmOrderCompletion);
-router.patch('/:id/dispute', authorize(UserRole.USER, UserRole.ADMIN), OrderController.disputeOrder);
+// USER and BUSINESS_OWNER routes (shopping)
+router.post('/', authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.createOrder);
+router.get('/', authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.getMyOrders);
+router.patch('/:id/cancel', authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.cancelOrder);
+router.patch('/:id/complete', authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.confirmOrderCompletion);
+router.patch('/:id/dispute', authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.disputeOrder);
 
 // BUSINESS_OWNER routes
 router.get('/business/:businessId', authorize(UserRole.BUSINESS_OWNER, UserRole.ADMIN), OrderController.getBusinessOrders);

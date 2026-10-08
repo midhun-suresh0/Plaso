@@ -16,6 +16,7 @@ import { theme } from '../constants/theme';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoInput } from '../components/PlasoInput';
 import { PlasoButton } from '../components/PlasoButton';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
@@ -104,8 +105,16 @@ export default function LoginScreen({ navigation }: Props) {
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
+            <GoogleAuthButton onError={setError} />
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             <PlasoButton
-              title="Sign In"
+              title="Sign In with Email"
               variant="gradient"
               onPress={handleLogin}
               loading={loading}
@@ -194,6 +203,22 @@ const styles = StyleSheet.create({
   registerLink: {
     color: theme.colors.primary,
     fontSize: theme.typography.sizes.md,
+    fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    marginHorizontal: theme.spacing.md,
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.sizes.sm,
     fontWeight: 'bold',
   },
 });

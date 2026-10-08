@@ -26,6 +26,9 @@ interface EnvConfig {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET: string;
+
+  // Google Auth
+  googleClientId: string;
 }
 
 const env: EnvConfig = {
@@ -51,6 +54,9 @@ const env: EnvConfig = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+
+  // Google Auth
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
 };
 
 if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_WEBHOOK_SECRET) {

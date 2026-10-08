@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { postService } from '../services/post.service';
 import { AppError, HttpStatus } from '../types';
+import { RecommendationService } from '../services/recommendation.service';
+import { InteractionType } from '../models/userInteraction.model';
 
 export const postController = {
   createPost: async (req: Request, res: Response, next: NextFunction) => {
@@ -50,6 +52,9 @@ export const postController = {
       const userId = (req as any).user.userId;
       const postId = req.params.id as string;
       const post = await postService.getPostById(postId, userId);
+      
+      RecommendationService.trackInteraction(userId, InteractionType.POST_VIEW, postId, 'Post');
+
       res.json({ success: true, data: post });
     } catch (error: any) {
       if (error.message.includes('Forbidden')) {
@@ -92,6 +97,11 @@ export const postController = {
       const userId = (req as any).user.userId;
       const postId = req.params.id as string;
       const liked = await postService.likePost(postId, userId);
+      
+      if (liked) {
+        RecommendationService.trackInteraction(userId, InteractionType.POST_LIKE, postId, 'Post');
+      }
+
       res.json({ success: true, data: { liked } });
     } catch (error: any) {
       next(new AppError(error.message, HttpStatus.BAD_REQUEST));
@@ -133,6 +143,9 @@ export const postController = {
       }
 
       const comment = await postService.addComment(postId, userId, content);
+      
+      RecommendationService.trackInteraction(userId, InteractionType.POST_COMMENT, postId, 'Post');
+      
       res.status(HttpStatus.CREATED).json({ success: true, data: comment });
     } catch (error: any) {
       next(new AppError(error.message, HttpStatus.BAD_REQUEST));
@@ -178,6 +191,10 @@ export const postController = {
       const userId = (req as any).user.userId;
       const postId = req.params.id as string;
       const saved = await postService.savePost(postId, userId);
+      
+      // Track interaction asynchronously
+      RecommendationService.trackInteraction(userId, InteractionType.POST_SAVE, postId, 'Post');
+
       res.json({ success: true, data: { saved } });
     } catch (error: any) {
       next(new AppError(error.message, HttpStatus.BAD_REQUEST));

@@ -47,6 +47,13 @@ export const authApi = {
   },
 
   /**
+   * Login or sign up with Google ID token
+   */
+  async googleLogin(idToken: string): Promise<ApiResponse<AuthResponse>> {
+    return api.post<AuthResponse>('/auth/google', { idToken });
+  },
+
+  /**
    * Get current authenticated user details
    */
   async getCurrentUser(): Promise<ApiResponse<GetMeResponse>> {
