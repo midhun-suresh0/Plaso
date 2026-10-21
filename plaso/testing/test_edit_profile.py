@@ -78,10 +78,10 @@ def test_plaso_edit_profile():
         # 6. Wait for success response
         time.sleep(3) 
         
-        print("✅ Edit Profile test executed successfully!")
+        print("[SUCCESS] Edit Profile test executed successfully!")
 
     except Exception as e:
-        print(f"❌ Test Failed: {e}")
+        print(f"[FAILED] Test Failed: {e}")
         
     finally:
         # Close the browser after the test

@@ -1,22 +1,40 @@
-/**
- * Application configuration constants.
- * Centralized place for environment-dependent values.
- */
+import { Platform, NativeModules } from 'react-native';
 
-// Use your machine's local IP when testing on physical devices.
-// 'localhost' works for web and iOS simulator.
-// For Android emulator, use '10.0.2.2' instead.
-const API_BASE_URL = __DEV__
-  ? 'http://10.121.191.100:5000/api'  // Physical device local IP
-  : 'https://api.plaso.app/api'; // Production (future)
+/**
+ * Dynamically resolves the development API base URL:
+ * 1. Web browser: uses window.location.hostname (e.g. localhost or 10.142.178.100)
+ * 2. Mobile (Expo Go / React Native): inspects NativeModules.SourceCode.scriptURL
+ *    which points to the Metro bundler host IP.
+ * 3. Fallback: current machine Wi-Fi IPv4 (10.142.178.100)
+ */
+const getDevApiBaseUrl = (): string => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+    return `http://${window.location.hostname}:5000/api`;
+  }
+
+  const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+  if (scriptURL) {
+    const match = scriptURL.match(/^https?:\/\/([^/:]+)/);
+    if (match && match[1]) {
+      const host = match[1];
+      if ((host === 'localhost' || host === '127.0.0.1') && Platform.OS === 'android') {
+        return 'http://10.0.2.2:5000/api';
+      }
+      return `http://${host}:5000/api`;
+    }
+  }
+
+  return 'http://10.142.178.100:5000/api';
+};
 
 export const config = {
   api: {
-    baseUrl: API_BASE_URL,
-    timeout: 10000, // 10 seconds
+    get baseUrl(): string {
+      return __DEV__ ? getDevApiBaseUrl() : 'https://api.plaso.app/api';
+    },
+    timeout: 15000, // 15 seconds
   },
   google: {
-    // Replace with different client IDs if needed later for Web/iOS
     webClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',
     androidClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',
     iosClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',

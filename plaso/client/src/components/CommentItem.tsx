@@ -31,12 +31,12 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete }) =
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={handleAuthorPress}>
-        <PlasoAvatar uri={comment.author.profileImage} name={comment.author.name} size="sm" />
+        <PlasoAvatar uri={comment.author?.profileImage} name={comment.author?.name || 'User'} size="sm" />
       </TouchableOpacity>
       <View style={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleAuthorPress}>
-            <Text style={styles.name}>{comment.author.name}</Text>
+            <Text style={styles.name}>{comment.author?.name || 'User'}</Text>
           </TouchableOpacity>
           <Text style={styles.meta}>
             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}

@@ -11,15 +11,30 @@ export class MessageService {
    */
   static async findOrCreateConversation(
     currentUserId: string,
-    targetUserId: string,
+    targetUserId?: string,
     businessId?: string,
     listingId?: string
   ) {
-    if (currentUserId === targetUserId) {
-      throw new AppError('You cannot message yourself', HttpStatus.BAD_REQUEST);
+    let resolvedTargetUserId = targetUserId && targetUserId.trim() && targetUserId !== 'undefined' ? targetUserId.trim() : undefined;
+
+    // If targetUserId is not directly provided but businessId is, resolve to the business owner
+    if (!resolvedTargetUserId && businessId) {
+      const business = await Business.findById(businessId);
+      if (!business) {
+        throw new AppError('Business not found', HttpStatus.NOT_FOUND);
+      }
+      resolvedTargetUserId = business.owner.toString();
     }
 
-    const participants = [currentUserId, targetUserId].sort(); // Sort to ensure consistent array matching
+    if (!resolvedTargetUserId) {
+      throw new AppError('Recipient or business is required to start a conversation', HttpStatus.BAD_REQUEST);
+    }
+
+    if (currentUserId === resolvedTargetUserId) {
+      throw new AppError('You cannot message yourself or your own business', HttpStatus.BAD_REQUEST);
+    }
+
+    const participants = [currentUserId, resolvedTargetUserId].sort(); // Sort to ensure consistent array matching
 
     const query: any = {
       participants: { $all: participants, $size: 2 },
@@ -43,14 +58,14 @@ export class MessageService {
           throw new AppError('Business not found', HttpStatus.NOT_FOUND);
         }
         // Ensure one of the participants is the business owner
-        if (business.owner.toString() !== currentUserId && business.owner.toString() !== targetUserId) {
+        if (business.owner.toString() !== currentUserId && business.owner.toString() !== resolvedTargetUserId) {
           throw new AppError('Invalid business conversation participants', HttpStatus.FORBIDDEN);
         }
       }
 
       const unreadCounts = new Map<string, number>();
       unreadCounts.set(currentUserId, 0);
-      unreadCounts.set(targetUserId, 0);
+      unreadCounts.set(resolvedTargetUserId, 0);
 
       conversation = await Conversation.create({
         participants,

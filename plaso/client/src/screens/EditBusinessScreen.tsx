@@ -11,7 +11,7 @@ import { businessApi } from '../services/businessApi';
 import { BUSINESS_CATEGORIES } from '../constants/businessCategories';
 import { useAuth } from '../context/AuthContext';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from '../components/MapProxy';
+import { UniversalMap } from '../components/UniversalMap';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = NativeStackScreenProps<RootStackParamList, 'EditBusiness'>['route'];
@@ -223,23 +223,14 @@ const EditBusinessScreen = () => {
         <Text style={styles.mapLabel}>Business Location on Map *</Text>
         <Text style={styles.subText}>Drag the map to pinpoint your exact business location.</Text>
         <View style={styles.mapWrapper}>
-          <MapView 
+          <UniversalMap
             style={styles.map}
-            initialRegion={{
-              latitude: mapLocation.latitude,
-              longitude: mapLocation.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
+            center={mapLocation}
+            mode="picker"
+            onLocationChange={(coords) => {
+              setMapLocation(coords);
             }}
-            onRegionChangeComplete={(region) => {
-              setMapLocation({ latitude: region.latitude, longitude: region.longitude });
-            }}
-          >
-            <Marker coordinate={mapLocation} />
-          </MapView>
-          <View style={styles.mapCenterMarker} pointerEvents="none">
-             <Ionicons name="location" size={32} color={theme.colors.primary} />
-          </View>
+          />
         </View>
 
         <View style={styles.divider} />

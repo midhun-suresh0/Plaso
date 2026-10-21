@@ -16,7 +16,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const BusinessDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
-  
+
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,8 +87,8 @@ const BusinessDashboardScreen = () => {
           <MaterialIcons name="storefront" size={64} color={theme.colors.surfaceHighlight} />
           <Text style={styles.emptyTitle}>No Business Yet</Text>
           <Text style={styles.emptyText}>Create your business profile to start reaching local customers.</Text>
-          <PlasoButton 
-            title="Create Business" 
+          <PlasoButton
+            title="Create Business"
             onPress={() => navigation.navigate('EditBusiness')}
             style={styles.createButton}
           />
@@ -105,7 +105,7 @@ const BusinessDashboardScreen = () => {
           <MaterialIcons name="add" size={28} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {businesses.map(business => (
           <View key={business._id} style={{ marginBottom: theme.spacing.xl }}>
@@ -117,8 +117,8 @@ const BusinessDashboardScreen = () => {
                   <Text style={styles.bannerTitle}>Status: {business.verificationStatus}</Text>
                   <Text style={styles.bannerDesc}>
                     {business.verificationStatus === 'PENDING' ? 'Your business is awaiting admin approval.' :
-                     business.verificationStatus === 'REJECTED' ? 'Your business application was rejected.' :
-                     'Your business is suspended.'}
+                      business.verificationStatus === 'REJECTED' ? 'Your business application was rejected.' :
+                        'Your business is suspended.'}
                   </Text>
                 </View>
               </View>
@@ -145,28 +145,35 @@ const BusinessDashboardScreen = () => {
                   thumbColor={theme.colors.surface}
                 />
               </View>
-              
+
               <View style={styles.actionRow}>
-                <PlasoButton 
-                  title="Edit Profile" 
+                <PlasoButton
+                  title="Edit Profile"
                   variant="secondary"
-                  onPress={() => navigation.navigate('EditBusiness', { businessId: business._id })} 
+                  onPress={() => navigation.navigate('EditBusiness', { businessId: business._id })}
                   style={styles.actionButton}
                 />
-                <PlasoButton 
-                  title="Create Post" 
+                <PlasoButton
+                  title="Create Post"
                   variant="primary"
-                  onPress={() => navigation.navigate('CreatePost', { asBusiness: true })} 
+                  onPress={() => navigation.navigate('CreatePost', { asBusiness: true })}
                   disabled={business.verificationStatus !== 'APPROVED'}
                   style={styles.actionButton}
                 />
               </View>
-              <PlasoButton 
-                title="Manage Listings" 
+              <PlasoButton
+                title="Manage Listings"
                 variant="secondary"
-                onPress={() => navigation.navigate('BusinessListings', { businessId: business._id })} 
+                onPress={() => navigation.navigate('BusinessListings', { businessId: business._id })}
                 disabled={business.verificationStatus !== 'APPROVED'}
                 style={{ marginTop: theme.spacing.md }}
+              />
+              <PlasoButton
+                title="Manage Orders"
+                variant="primary"
+                onPress={() => navigation.navigate('BusinessOrders', { businessId: business._id })}
+                disabled={business.verificationStatus !== 'APPROVED'}
+                style={{ marginTop: theme.spacing.sm }}
               />
             </PlasoCard>
           </View>

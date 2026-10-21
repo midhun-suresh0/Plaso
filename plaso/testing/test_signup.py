@@ -70,10 +70,10 @@ def test_plaso_signup():
         # 7. Wait for the API response and Home Screen transition
         time.sleep(3) 
         
-        print("✅ Registration test executed successfully!")
+        print("[SUCCESS] Registration test executed successfully!")
 
     except Exception as e:
-        print(f"❌ Test Failed: {e}")
+        print(f"[FAILED] Test Failed: {e}")
         
     finally:
         # Close the browser after the test

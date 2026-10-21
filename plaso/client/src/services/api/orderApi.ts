@@ -47,9 +47,17 @@ export const orderApi = {
     return response;
   },
 
-  updateBusinessOrderStatus: async (orderId: string, status: OrderStatus) => {
-    const response = await api.patch<{ order: Order }>(`/orders/business/${orderId}/status`, { status });
+  updateBusinessOrderStatus: async (orderId: string, status: OrderStatus, reason?: string) => {
+    const response = await api.patch<{ order: Order }>(`/orders/business/${orderId}/status`, { status, reason });
     return response;
+  },
+
+  acceptOrder: async (orderId: string) => {
+    return orderApi.updateBusinessOrderStatus(orderId, OrderStatus.CONFIRMED);
+  },
+
+  rejectOrder: async (orderId: string, reason: string) => {
+    return orderApi.updateBusinessOrderStatus(orderId, OrderStatus.CANCELLED, reason);
   },
 
   // ADMIN

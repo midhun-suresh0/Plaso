@@ -24,6 +24,7 @@ import EditBusinessScreen from '../screens/EditBusinessScreen';
 import AdminBusinessesScreen from '../screens/AdminBusinessesScreen';
 import AdminBusinessDetailsScreen from '../screens/AdminBusinessDetailsScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import AdminReportsScreen from '../screens/AdminReportsScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ListingDetailsScreen from '../screens/ListingDetailsScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
@@ -164,6 +165,11 @@ export default function AppNavigator(): React.JSX.Element {
             <Stack.Screen
               name="AdminDashboard"
               component={AdminDashboardScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AdminReports"
+              component={AdminReportsScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

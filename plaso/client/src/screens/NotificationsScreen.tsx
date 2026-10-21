@@ -87,7 +87,9 @@ export default function NotificationsScreen({ navigation }: Props) {
         navigation.navigate('PostDetails', { post: notification.post });
       }
     } else if (notification.type === 'FOLLOW') {
-      navigation.navigate('UserProfile', { userId: notification.sender._id });
+      if (notification.sender?._id) {
+        navigation.navigate('UserProfile', { userId: notification.sender._id });
+      }
     }
   };
 
@@ -102,11 +104,15 @@ export default function NotificationsScreen({ navigation }: Props) {
   };
 
   const getNotificationText = (notification: Notification) => {
+    if (notification.message) return notification.message;
     switch (notification.type) {
       case 'LIKE': return 'liked your post';
       case 'COMMENT': return 'commented on your post';
       case 'FOLLOW': return 'started following you';
       case 'MENTION': return 'mentioned you';
+      case 'ORDER_CREATED': return 'placed a new order';
+      case 'ORDER_STATUS_UPDATED': return 'updated your order status';
+      case 'SYSTEM': return 'sent a notification';
       default: return 'interacted with you';
     }
   };
@@ -116,31 +122,38 @@ export default function NotificationsScreen({ navigation }: Props) {
       case 'LIKE': return <Ionicons name="heart" size={16} color={theme.colors.primary} style={styles.typeIcon} />;
       case 'COMMENT': return <Ionicons name="chatbubble" size={16} color={theme.colors.success} style={styles.typeIcon} />;
       case 'FOLLOW': return <Ionicons name="person-add" size={16} color={theme.colors.info} style={styles.typeIcon} />;
-      default: return null;
+      case 'ORDER_CREATED':
+      case 'ORDER_STATUS_UPDATED': return <Ionicons name="receipt" size={16} color={theme.colors.warning} style={styles.typeIcon} />;
+      default: return <Ionicons name="notifications" size={16} color={theme.colors.primary} style={styles.typeIcon} />;
     }
   };
 
-  const renderItem = ({ item }: { item: Notification }) => (
-    <TouchableOpacity
-      style={[styles.notificationItem, !item.isRead && styles.unreadItem]}
-      onPress={() => handleNotificationPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.avatarContainer}>
-        <PlasoAvatar uri={item.sender.profileImage} name={item.sender.name} size="md" />
-        {getNotificationIcon(item.type)}
-      </View>
-      <View style={styles.contentContainer}>
-        <Text style={styles.notificationText}>
-          <Text style={styles.boldText}>{item.sender.name}</Text> {getNotificationText(item)}
-        </Text>
-        <Text style={styles.timeText}>
-          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-        </Text>
-      </View>
-      {!item.isRead && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: Notification }) => {
+    const senderName = item.sender?.name || 'Plaso Notification';
+    const senderImage = item.sender?.profileImage;
+
+    return (
+      <TouchableOpacity
+        style={[styles.notificationItem, !item.isRead && styles.unreadItem]}
+        onPress={() => handleNotificationPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.avatarContainer}>
+          <PlasoAvatar uri={senderImage} name={senderName} size="md" />
+          {getNotificationIcon(item.type)}
+        </View>
+        <View style={styles.contentContainer}>
+          <Text style={styles.notificationText}>
+            <Text style={styles.boldText}>{senderName}</Text> {getNotificationText(item)}
+          </Text>
+          <Text style={styles.timeText}>
+            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+          </Text>
+        </View>
+        {!item.isRead && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -153,7 +166,16 @@ export default function NotificationsScreen({ navigation }: Props) {
   return (
     <PlasoScreen>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Notifications</Text>
+        </View>
         <TouchableOpacity onPress={handleMarkAllRead}>
           <Text style={styles.markAllText}>Mark all read</Text>
         </TouchableOpacity>
@@ -197,6 +219,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.md,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: theme.spacing.md,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 24,

@@ -64,7 +64,7 @@ export default function MyOrdersScreen() {
     const moreCount = item.items.length - 1;
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.orderCard}
         onPress={() => navigation.navigate('OrderDetails' as any, { orderId: item._id })}
       >
@@ -109,7 +109,7 @@ export default function MyOrdersScreen() {
 
       <View style={styles.filterContainer}>
         {['ALL', 'ACTIVE', 'COMPLETED', 'CANCELLED'].map((f) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={f}
             style={[styles.filterTab, filter === f && styles.filterTabActive]}
             onPress={() => setFilter(f as any)}

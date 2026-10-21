@@ -41,10 +41,10 @@ def test_plaso_login():
         time.sleep(3) 
         
         # If no exceptions were thrown, the test is successful
-        print("✅ Login test executed successfully!")
+        print("[SUCCESS] Login test executed successfully!")
 
     except Exception as e:
-        print(f"❌ Test Failed: {e}")
+        print(f"[FAILED] Test Failed: {e}")
         
     finally:
         # Close the browser after the test

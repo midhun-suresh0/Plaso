@@ -2,12 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
-import MapView, { Marker, Callout } from '../components/MapProxy';
+import { UniversalMap, UniversalMapRef, MapMarkerItem } from '../components/UniversalMap';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { discoveryApi } from '../services/discoveryApi';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 
 type Props = {
@@ -16,6 +15,10 @@ type Props = {
 
 const CATEGORIES = ['All', 'Businesses', 'Marketplace', 'Posts', 'Food', 'Shopping', 'Services', 'Recommended'];
 const RADII = [1, 3, 5, 10, 25];
+
+// Default fallback coordinates (Kanjirappally/Kottayam, Kerala where demo data is located)
+const DEFAULT_LATITUDE = 9.528;
+const DEFAULT_LONGITUDE = 76.822;
 
 export default function MapDiscoveryScreen({ navigation }: Props) {
   const { user } = useAuth();
@@ -30,25 +33,97 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
   const [listings, setListings] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
 
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<UniversalMapRef>(null);
+
+  const getFallbackCoords = () => {
+    const userLat = user?.location?.coordinates?.[1];
+    const userLng = user?.location?.coordinates?.[0];
+    return {
+      latitude: (typeof userLat === 'number' && !isNaN(userLat)) ? userLat : DEFAULT_LATITUDE,
+      longitude: (typeof userLng === 'number' && !isNaN(userLng)) ? userLng : DEFAULT_LONGITUDE,
+    };
+  };
 
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location access is needed to show nearby places.');
-        setLoading(false);
-        return;
+    let isMounted = true;
+
+    const initLocation = async () => {
+      let currentLoc: Location.LocationObject | null = null;
+
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          // Fast attempt first: get last known location
+          try {
+            currentLoc = await Location.getLastKnownPositionAsync({});
+          } catch (err) {
+            // fallback to current position
+          }
+
+          if (!currentLoc) {
+            try {
+              currentLoc = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+            } catch (err) {
+              console.warn('GPS location request timed out, using fallback');
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Location permission error', err);
       }
 
-      let currentLoc = await Location.getCurrentPositionAsync({});
-      setLocation(currentLoc);
-      
-      // Load nearby entities
-      loadEntities(currentLoc.coords.latitude, currentLoc.coords.longitude, radius, activeCategory, search);
-      setLoading(false);
-    })();
+      if (!isMounted) return;
+
+      const fallback = getFallbackCoords();
+      const lat = currentLoc?.coords?.latitude ?? fallback.latitude;
+      const lng = currentLoc?.coords?.longitude ?? fallback.longitude;
+
+      const effectiveLoc: Location.LocationObject = currentLoc || {
+        coords: {
+          latitude: lat,
+          longitude: lng,
+          altitude: null,
+          accuracy: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+        },
+        timestamp: Date.now(),
+      };
+
+      setLocation(effectiveLoc);
+      await loadEntities(lat, lng, radius, activeCategory, search);
+
+      if (isMounted) {
+        setLoading(false);
+      }
+
+      // Animate map to resolved coordinates
+      setTimeout(() => {
+        if (mapRef.current && isMounted) {
+          mapRef.current.centerOn(lat, lng, 14);
+        }
+      }, 500);
+    };
+
+    initLocation();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  const getCurrentCoords = () => {
+    if (location?.coords?.latitude && location?.coords?.longitude) {
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+    }
+    return getFallbackCoords();
+  };
 
   const loadEntities = async (lat: number, lng: number, rad: number, category: string, query: string) => {
     try {
@@ -74,7 +149,7 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
         radius: rad,
         category: mappedCategory,
         type,
-        search: query
+        search: query,
       });
 
       if (res.success && res.data) {
@@ -83,74 +158,121 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
         setPosts(res.data.posts || []);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load nearby entities', e);
     }
   };
 
   const centerOnUser = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      });
+    const coords = getCurrentCoords();
+    if (mapRef.current) {
+      mapRef.current.centerOn(coords.latitude, coords.longitude, 14);
     }
   };
 
   const handleSearch = () => {
-    if (location) {
-      loadEntities(location.coords.latitude, location.coords.longitude, radius, activeCategory, search);
-    }
+    const coords = getCurrentCoords();
+    loadEntities(coords.latitude, coords.longitude, radius, activeCategory, search);
   };
 
   const handleCategorySelect = (cat: string) => {
     setActiveCategory(cat);
-    if (location) {
-      loadEntities(location.coords.latitude, location.coords.longitude, radius, cat, search);
-    }
+    const coords = getCurrentCoords();
+    loadEntities(coords.latitude, coords.longitude, radius, cat, search);
   };
 
   const handleRadiusSelect = (rad: number) => {
     setRadius(rad);
-    if (location) {
-      loadEntities(location.coords.latitude, location.coords.longitude, rad, activeCategory, search);
-    }
+    const coords = getCurrentCoords();
+    loadEntities(coords.latitude, coords.longitude, rad, activeCategory, search);
   };
 
   const getDirections = (lat: number, lng: number, label: string) => {
     const url = Platform.select({
-      ios: `maps:0,0?q=${label}@${lat},${lng}`,
-      android: `geo:0,0?q=${lat},${lng}(${label})`,
-      default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+      ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lng}`,
+      android: `geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
     });
-    Linking.openURL(url);
+    if (url) {
+      Linking.openURL(url).catch(err => console.error('Error opening maps', err));
+    }
   };
 
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loaderText}>Discovering nearby places...</Text>
       </View>
     );
   }
 
-  const initialRegion = location ? {
-    latitude: location.coords.latitude,
-    longitude: location.coords.longitude,
+  const coords = getCurrentCoords();
+  const initialRegion = {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
-  } : {
-    latitude: 9.9312,
-    longitude: 76.2673, // Default fallback (Kochi)
-    latitudeDelta: 0.5,
-    longitudeDelta: 0.5,
+  };
+
+  // Filter valid coordinates to prevent native map marker crashes
+  const validBusinesses = businesses.filter(
+    b => b?.location?.coordinates && Array.isArray(b.location.coordinates) && b.location.coordinates.length === 2 && !isNaN(b.location.coordinates[0]) && !isNaN(b.location.coordinates[1])
+  );
+  const validListings = listings.filter(
+    l => l?.location?.coordinates && Array.isArray(l.location.coordinates) && l.location.coordinates.length === 2 && !isNaN(l.location.coordinates[0]) && !isNaN(l.location.coordinates[1])
+  );
+  const validPosts = posts.filter(
+    p => p?.location?.coordinates && Array.isArray(p.location.coordinates) && p.location.coordinates.length === 2 && !isNaN(p.location.coordinates[0]) && !isNaN(p.location.coordinates[1])
+  );
+
+  const mapMarkers: MapMarkerItem[] = [
+    ...validBusinesses.map(b => ({
+      id: b._id,
+      latitude: b.location.coordinates[1],
+      longitude: b.location.coordinates[0],
+      title: b.name,
+      subtitle: b.category || 'Business',
+      category: b.category,
+      isOpen: b.isOpen,
+      type: 'business' as const,
+      rawData: b,
+    })),
+    ...validListings.map(l => ({
+      id: l._id,
+      latitude: l.location.coordinates[1],
+      longitude: l.location.coordinates[0],
+      title: l.title,
+      subtitle: l.category,
+      price: l.price,
+      category: l.category,
+      type: 'listing' as const,
+      rawData: l,
+    })),
+    ...validPosts.map(p => ({
+      id: p._id,
+      latitude: p.location.coordinates[1],
+      longitude: p.location.coordinates[0],
+      title: `${p.author?.name || 'User'}'s Post`,
+      subtitle: p.content || '',
+      type: 'post' as const,
+      rawData: p,
+    })),
+  ];
+
+  const handleMarkerPress = (marker: MapMarkerItem) => {
+    if (marker.type === 'business') {
+      navigation.navigate('BusinessProfile', { businessId: marker.id });
+    } else if (marker.type === 'listing') {
+      navigation.navigate('ListingDetails', { listingId: marker.id });
+    } else if (marker.type === 'post') {
+      navigation.navigate('PostDetails', { post: marker.rawData });
+    }
   };
 
   return (
     <PlasoScreen>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Back">
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <View style={styles.searchBar}>
@@ -162,7 +284,13 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={handleSearch}
+            returnKeyType="search"
           />
+          {search ? (
+            <TouchableOpacity onPress={() => { setSearch(''); handleSearch(); }}>
+              <Ionicons name="close-circle" size={18} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
@@ -181,71 +309,24 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.mapContainer}>
-        <MapView 
+        <UniversalMap
           ref={mapRef}
-          style={styles.map} 
-          initialRegion={initialRegion}
+          style={styles.map}
+          center={coords}
+          radius={radius}
+          markers={mapMarkers}
+          userLocation={coords}
           showsUserLocation={true}
-          showsMyLocationButton={false}
-          userInterfaceStyle="dark"
-        >
-          {businesses.map(b => (
-            <Marker
-              key={`bus-${b._id}`}
-              coordinate={{ latitude: b.location.coordinates[1], longitude: b.location.coordinates[0] }}
-              pinColor={theme.colors.primary}
-            >
-              <Callout onPress={() => navigation.navigate('BusinessProfile', { businessId: b._id })}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{b.name}</Text>
-                  <Text style={styles.calloutCategory}>{b.category}</Text>
-                  <Text style={styles.calloutDistance}>{b.isOpen ? 'Open' : 'Closed'}</Text>
-                  <TouchableOpacity style={styles.calloutButton} onPress={() => getDirections(b.location.coordinates[1], b.location.coordinates[0], b.name)}>
-                    <Text style={styles.calloutButtonText}>Directions</Text>
-                  </TouchableOpacity>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-
-          {listings.map(l => (
-            <Marker
-              key={`list-${l._id}`}
-              coordinate={{ latitude: l.location.coordinates[1], longitude: l.location.coordinates[0] }}
-              pinColor={theme.colors.success}
-            >
-              <Callout onPress={() => navigation.navigate('ListingDetails', { listingId: l._id })}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{l.title}</Text>
-                  <Text style={styles.calloutPrice}>₹{l.price}</Text>
-                  <Text style={styles.calloutCategory}>{l.category}</Text>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-
-          {posts.map(p => (
-            <Marker
-              key={`post-${p._id}`}
-              coordinate={{ latitude: p.location.coordinates[1], longitude: p.location.coordinates[0] }}
-              pinColor={theme.colors.textSecondary}
-            >
-              <Callout onPress={() => navigation.navigate('PostDetails', { post: p })}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{p.author?.name}'s Post</Text>
-                  <Text style={styles.calloutContent} numberOfLines={2}>{p.content}</Text>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-        </MapView>
+          onMarkerPress={handleMarkerPress}
+          onDirectionsPress={({ latitude, longitude, label }) => getDirections(latitude, longitude, label)}
+        />
         
-        <TouchableOpacity style={styles.myLocationButton} onPress={centerOnUser}>
-          <Ionicons name="navigate" size={24} color={theme.colors.text} />
+        <TouchableOpacity style={styles.myLocationButton} onPress={centerOnUser} accessibilityLabel="Center on my location">
+          <Ionicons name="navigate" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
 
         <View style={styles.radiusControl}>
-          <Text style={styles.radiusLabel}>Radius</Text>
+          <Text style={styles.radiusLabel}>Discovery Radius</Text>
           <View style={styles.radiusOptions}>
             {RADII.map(rad => (
               <TouchableOpacity 
@@ -270,6 +351,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
+  loaderText: {
+    marginTop: theme.spacing.md,
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.sizes.md,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,6 +366,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: theme.spacing.md,
+    padding: 4,
   },
   searchBar: {
     flex: 1,
@@ -294,6 +381,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: theme.colors.text,
     marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
   },
   categories: {
     flexDirection: 'row',
@@ -303,8 +391,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: theme.radii.full,
     backgroundColor: theme.colors.surfaceHighlight,
     borderWidth: 1,
@@ -320,18 +408,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chipTextActive: {
-    color: theme.colors.surface,
+    color: '#FFFFFF',
   },
   mapContainer: {
     flex: 1,
     position: 'relative',
+    overflow: 'hidden',
   },
   map: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   myLocationButton: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 90,
     right: 20,
     backgroundColor: theme.colors.surface,
     width: 48,
@@ -343,7 +433,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   radiusControl: {
     position: 'absolute',
@@ -357,13 +449,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   radiusLabel: {
     color: theme.colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
     marginBottom: 4,
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   radiusOptions: {
     flexDirection: 'row',
@@ -383,46 +480,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   radiusBtnTextActive: {
-    color: theme.colors.surface,
+    color: '#FFFFFF',
   },
   callout: {
-    width: 200,
-    padding: 10,
+    minWidth: 160,
+    maxWidth: 240,
+    padding: 8,
   },
   calloutTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 14,
+    color: '#111827',
+    marginBottom: 2,
   },
   calloutCategory: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  calloutPrice: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2e7d32',
-    marginBottom: 4,
+    color: '#6B7280',
+    marginBottom: 2,
   },
   calloutDistance: {
-    fontSize: 12,
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+    marginBottom: 6,
+  },
+  calloutPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#2563EB',
+    marginBottom: 2,
   },
   calloutContent: {
     fontSize: 12,
-    color: '#333',
+    color: '#374151',
   },
   calloutButton: {
-    backgroundColor: '#007AFF',
-    padding: 8,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 4,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   calloutButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  }
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });

@@ -58,12 +58,13 @@ export type RootStackParamList = {
   AdminBusinesses: undefined;
   AdminBusinessDetails: { businessId: string };
   AdminDashboard: undefined;
-  
+  AdminReports: undefined;
+
   // Review Routes
   CreateReview: { orderId: string, businessId: string, listingId?: string, reviewId?: string };
   MyReviews: undefined;
   AdminReviews: undefined;
-  
+
   // Marketplace Routes
   Marketplace: undefined;
   ListingDetails: { listingId: string };
@@ -71,7 +72,7 @@ export type RootStackParamList = {
   EditListing: { listing: MarketplaceListing };
   BusinessListings: { businessId: string };
   AdminListings: undefined;
-  
+
   // Order & Cart Routes
   Cart: undefined;
   Checkout: undefined;

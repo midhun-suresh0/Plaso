@@ -1,4 +1,4 @@
-
+import mongoose from 'mongoose';
 import Order, { IOrder, OrderStatus, PaymentStatus, FulfillmentType, DisputeStatus } from '../models/order.model';
 import Cart from '../models/cart.model';
 import MarketplaceListing, { ListingType } from '../models/marketplaceListing.model';
@@ -286,7 +286,12 @@ export class OrderService {
       .sort({ createdAt: -1 });
   }
 
-  static async updateBusinessOrderStatus(orderId: string, ownerId: string, newStatus: OrderStatus): Promise<IOrder> {
+  static async updateBusinessOrderStatus(
+    orderId: string,
+    ownerId: string,
+    newStatus: OrderStatus,
+    reason?: string
+  ): Promise<IOrder> {
     const order = await Order.findById(orderId).populate('business');
     if (!order) throw new AppError('Order not found', HttpStatus.NOT_FOUND);
 
@@ -295,30 +300,50 @@ export class OrderService {
       throw new AppError('Unauthorized access to business order', HttpStatus.FORBIDDEN);
     }
 
+    if (order.orderStatus === newStatus) {
+      return order; // Idempotent
+    }
+
     // Status transition validation
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.READY, OrderStatus.CANCELLED],
-      [OrderStatus.READY]: [OrderStatus.COMPLETED], // Usually completed by user, but business can mark if needed
+      [OrderStatus.READY]: [OrderStatus.COMPLETED],
       [OrderStatus.COMPLETED]: [],
       [OrderStatus.CANCELLED]: [],
       [OrderStatus.DISPUTED]: [],
     };
 
-    if (!validTransitions[order.orderStatus].includes(newStatus)) {
+    if (!validTransitions[order.orderStatus]?.includes(newStatus)) {
       throw new AppError(`Invalid transition from ${order.orderStatus} to ${newStatus}`, HttpStatus.BAD_REQUEST);
     }
 
-    order.orderStatus = newStatus;
-    if (newStatus === OrderStatus.COMPLETED) {
-      order.completedAt = new Date();
-      order.paymentStatus = PaymentStatus.PAID;
-      await Transaction.findOneAndUpdate({ order: order._id }, { status: TransactionStatus.SUCCESS });
+    let customerMessage = `Your order #${order.orderNumber} status has been updated to ${newStatus}.`;
+
+    if (newStatus === OrderStatus.CONFIRMED) {
+      // 1. Verify payment is successful (PAID)
+      if (order.paymentStatus !== PaymentStatus.PAID) {
+        throw new AppError('Cannot accept order: Payment has not been verified as PAID.', HttpStatus.BAD_REQUEST);
+      }
+      order.orderStatus = OrderStatus.CONFIRMED;
+      order.confirmedAt = new Date();
+      order.confirmedBy = new mongoose.Types.ObjectId(ownerId);
+      customerMessage = `Your order #${order.orderNumber} has been accepted by ${business.name}.`;
     } else if (newStatus === OrderStatus.CANCELLED) {
+      // 2. Require rejection reason
+      const trimmedReason = (reason || '').trim();
+      if (!trimmedReason) {
+        throw new AppError('A valid rejection reason is required to reject an order.', HttpStatus.BAD_REQUEST);
+      }
+      order.orderStatus = OrderStatus.CANCELLED;
+      order.rejectionReason = trimmedReason;
+      order.cancellationReason = trimmedReason;
+      order.rejectedAt = new Date();
       order.cancelledAt = new Date();
-      order.cancellationReason = 'Cancelled by business';
-      
+      order.rejectedBy = new mongoose.Types.ObjectId(ownerId);
+
+      // Restore stock if product order
       if (order.orderType === ListingType.PRODUCT) {
         for (const item of order.items) {
           await MarketplaceListing.findByIdAndUpdate(
@@ -327,20 +352,59 @@ export class OrderService {
           );
         }
       }
-      
-      await Transaction.findOneAndUpdate(
-        { order: order._id, status: TransactionStatus.PENDING },
-        { status: TransactionStatus.FAILED }
-      );
+
+      // If payment was already made, preserve existing refund workflow without auto marking refunded
+      if (order.paymentStatus === PaymentStatus.PAID) {
+        await Transaction.findOneAndUpdate(
+          { order: order._id },
+          {
+            $set: {
+              'metadata.refundRequested': true,
+              'metadata.refundReason': trimmedReason,
+              'metadata.refundRequestedAt': new Date().toISOString()
+            }
+          }
+        );
+        customerMessage = `Your order #${order.orderNumber} was rejected by ${business.name}. Reason: ${trimmedReason}. A refund of ₹${order.totalAmount.toLocaleString('en-IN')} has been initiated for processing.`;
+      } else {
+        await Transaction.findOneAndUpdate(
+          { order: order._id, status: TransactionStatus.PENDING },
+          { status: TransactionStatus.FAILED }
+        );
+        customerMessage = `Your order #${order.orderNumber} was rejected by ${business.name}. Reason: ${trimmedReason}.`;
+      }
+    } else if (newStatus === OrderStatus.PROCESSING) {
+      order.orderStatus = OrderStatus.PROCESSING;
+      customerMessage = `Your order #${order.orderNumber} is now being processed by ${business.name}.`;
+    } else if (newStatus === OrderStatus.READY) {
+      order.orderStatus = OrderStatus.READY;
+      if (order.fulfillmentType === FulfillmentType.PICKUP) {
+        customerMessage = `Your order #${order.orderNumber} is ready for pickup at ${business.name}.`;
+      } else if (order.fulfillmentType === FulfillmentType.DELIVERY) {
+        customerMessage = `Your order #${order.orderNumber} from ${business.name} is prepared for delivery.`;
+      } else {
+        customerMessage = `Your order #${order.orderNumber} from ${business.name} is ready.`;
+      }
+    } else if (newStatus === OrderStatus.COMPLETED) {
+      if (order.paymentStatus !== PaymentStatus.PAID) {
+        throw new AppError('Cannot complete order: Payment has not been verified as PAID.', HttpStatus.BAD_REQUEST);
+      }
+      order.orderStatus = OrderStatus.COMPLETED;
+      order.completedAt = new Date();
+      order.completedBy = new mongoose.Types.ObjectId(ownerId);
+      await Transaction.findOneAndUpdate({ order: order._id }, { status: TransactionStatus.SUCCESS });
+      customerMessage = `Your order #${order.orderNumber} from ${business.name} has been completed. You can now leave a review!`;
     }
 
     await order.save();
 
+    const buyerId = (order.buyer as any)._id ? (order.buyer as any)._id.toString() : order.buyer.toString();
     await NotificationService.createNotification({
-      recipient: order.buyer.toString(),
+      recipient: buyerId,
       sender: ownerId,
       type: NotificationType.ORDER_STATUS_UPDATED,
       order: order._id as any,
+      message: customerMessage,
     });
 
     return order;

@@ -62,9 +62,15 @@ export interface IOrder extends Document {
   scheduledDate?: Date;
   scheduledTime?: string;
   cancellationReason?: string;
+  rejectionReason?: string;
   disputeReason?: string;
   disputeStatus: DisputeStatus;
+  confirmedAt?: Date;
+  confirmedBy?: mongoose.Types.ObjectId;
+  rejectedAt?: Date;
+  rejectedBy?: mongoose.Types.ObjectId;
   completedAt?: Date;
+  completedBy?: mongoose.Types.ObjectId;
   cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -177,6 +183,10 @@ const OrderSchema: Schema = new Schema(
     cancellationReason: {
       type: String,
     },
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
     disputeReason: {
       type: String,
     },
@@ -185,8 +195,26 @@ const OrderSchema: Schema = new Schema(
       enum: Object.values(DisputeStatus),
       default: DisputeStatus.NONE,
     },
+    confirmedAt: {
+      type: Date,
+    },
+    confirmedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
     completedAt: {
       type: Date,
+    },
+    completedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
     },
     cancelledAt: {
       type: Date,
@@ -200,7 +228,6 @@ const OrderSchema: Schema = new Schema(
 // Indexes
 OrderSchema.index({ buyer: 1 });
 OrderSchema.index({ business: 1 });
-OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ orderStatus: 1 });
 OrderSchema.index({ paymentStatus: 1 });
 OrderSchema.index({ createdAt: -1 });

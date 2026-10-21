@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoBottomNav } from '../components/PlasoBottomNav';
 import { PlasoAvatar } from '../components/PlasoAvatar';
@@ -35,6 +36,7 @@ type Props = {
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
+  const { unreadCount, refreshUnreadCount } = useNotifications();
   
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,7 @@ export default function HomeScreen({ navigation }: Props) {
     useCallback(() => {
       fetchFeed(1, activeTab, true);
       loadSuggestions();
+      refreshUnreadCount();
     }, [activeTab])
   );
 
@@ -175,8 +178,19 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('MapDiscovery')}>
           <Ionicons name="map-outline" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity 
+          style={styles.iconButton} 
+          onPress={() => navigation.navigate('Notifications')}
+          accessibilityLabel="Notifications"
+        >
           <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
           <PlasoAvatar uri={user?.profileImage} name={user?.name} size="sm" />
@@ -374,6 +388,24 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     marginRight: theme.spacing.md,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   listContent: {
     paddingHorizontal: theme.spacing.md,

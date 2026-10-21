@@ -49,7 +49,7 @@ export const StoryViewerScreen: React.FC = () => {
   const [isReplying, setIsReplying] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<any>(null);
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentGroup = storyGroups[currentGroupIndex];

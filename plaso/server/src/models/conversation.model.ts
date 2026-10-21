@@ -15,7 +15,7 @@ const ConversationSchema: Schema = new Schema(
   {
     participants: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
     business: { type: Schema.Types.ObjectId, ref: 'Business' },
-    listing: { type: Schema.Types.ObjectId, ref: 'Listing' },
+    listing: { type: Schema.Types.ObjectId, ref: 'MarketplaceListing' },
     lastMessage: { type: String, default: '' },
     lastMessageAt: { type: Date, default: Date.now },
     unreadCounts: {

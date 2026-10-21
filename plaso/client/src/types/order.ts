@@ -55,9 +55,15 @@ export interface Order {
   scheduledDate?: string;
   scheduledTime?: string;
   cancellationReason?: string;
+  rejectionReason?: string;
   disputeReason?: string;
   disputeStatus: string;
+  confirmedAt?: string;
+  confirmedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
   completedAt?: string;
+  completedBy?: string;
   cancelledAt?: string;
   createdAt: string;
   updatedAt: string;

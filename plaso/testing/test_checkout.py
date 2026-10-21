@@ -74,10 +74,10 @@ def test_plaso_checkout():
         # 6. Wait for success response (Simulation bypass handles it)
         time.sleep(4) 
         
-        print("✅ E2E Checkout test executed successfully!")
+        print("[SUCCESS] E2E Checkout test executed successfully!")
 
     except Exception as e:
-        print(f"❌ Test Failed: {e}")
+        print(f"[FAILED] Test Failed: {e}")
         
     finally:
         # Close the browser after the test

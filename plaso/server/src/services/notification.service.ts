@@ -67,8 +67,11 @@ export class NotificationService {
 
     const totalCount = await Notification.countDocuments({ recipient: userId });
 
+    // Filter out any notification whose sender no longer exists
+    const sanitizedNotifications = notificationsQuery.filter((n: any) => n.sender != null);
+
     return {
-      notifications: notificationsQuery,
+      notifications: sanitizedNotifications,
       page,
       limit,
       totalCount,

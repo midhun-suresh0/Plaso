@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -50,9 +51,9 @@ export default function ChatScreen() {
     try {
       let convId = paramConversationId;
 
-      if (!convId && targetUserId) {
+      if (!convId && (targetUserId || businessId)) {
         // Find or create conversation
-        const response = await messageApi.findOrCreateConversation(targetUserId, businessId, listingId);
+        const response = await messageApi.findOrCreateConversation(targetUserId || '', businessId, listingId);
         if (response.success && response.data) {
           convId = response.data._id;
           setConversation(response.data);
@@ -77,8 +78,14 @@ export default function ChatScreen() {
         // Join socket room
         socketService.joinConversation(convId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to init chat:', error);
+      const errMsg = error.response?.data?.message || error.message || 'Could not start conversation.';
+      if (Platform.OS === 'web') {
+        window.alert(errMsg);
+      } else {
+        Alert.alert('Notice', errMsg);
+      }
     } finally {
       setIsLoading(false);
     }

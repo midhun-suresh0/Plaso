@@ -51,7 +51,7 @@ export class DiscoveryService {
         const shared = s.interests?.filter(i => currentUser.interests?.includes(i)).length || 0;
         return {
           _id: s._id,
-          name: s.name,
+          name: s.name || s.username || 'User',
           username: s.username,
           profileImage: s.profileImage,
           sharedInterests: shared
@@ -67,7 +67,7 @@ export class DiscoveryService {
         
       return suggestions.map(s => ({
         _id: s._id,
-        name: s.name,
+        name: s.name || s.username || 'User',
         username: s.username,
         profileImage: s.profileImage,
         sharedInterests: 0

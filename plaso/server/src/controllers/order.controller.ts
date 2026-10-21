@@ -73,8 +73,13 @@ export class OrderController {
 
   static async updateBusinessOrderStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { status } = req.body;
-      const order = await OrderService.updateBusinessOrderStatus(req.params.id as string, req.user!.userId, status as OrderStatus);
+      const { status, reason } = req.body;
+      const order = await OrderService.updateBusinessOrderStatus(
+        req.params.id as string,
+        req.user!.userId,
+        status as OrderStatus,
+        reason
+      );
       res.status(HttpStatus.OK).json({ success: true, order });
     } catch (error) {
       next(error);

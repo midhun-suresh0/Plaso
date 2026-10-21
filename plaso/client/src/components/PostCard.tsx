@@ -109,11 +109,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
       )}
       <View style={styles.header}>
         <TouchableOpacity style={styles.authorInfo} onPress={handleAuthorPress}>
-          <PlasoAvatar uri={post.author.profileImage} name={post.author.name} size="sm" />
+          <PlasoAvatar uri={post.author?.profileImage} name={post.author?.name || 'User'} size="sm" />
           <View style={styles.authorText}>
-            <Text style={styles.name}>{post.author.name}</Text>
+            <Text style={styles.name}>{post.author?.name || 'User'}</Text>
             <Text style={styles.meta}>
-              {post.author.username ? `@${post.author.username} • ` : ''}
+              {post.author?.username ? `@${post.author.username} • ` : ''}
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
             </Text>
           </View>

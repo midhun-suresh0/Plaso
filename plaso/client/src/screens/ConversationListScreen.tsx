@@ -69,7 +69,7 @@ export default function ConversationListScreen() {
     const otherParticipant = item.participants.find(p => p._id !== user?._id);
     if (!otherParticipant) return null;
 
-    const unreadCount = user?._id ? item.unreadCounts[user._id] || 0 : 0;
+    const unreadCount = user?._id ? item.unreadCounts?.[user._id] || 0 : 0;
     
     // Display logic: if business, show business name/logo
     const displayName = item.business ? item.business.name : otherParticipant.name;

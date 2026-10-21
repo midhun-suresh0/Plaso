@@ -12,12 +12,8 @@ import { tokenStorage } from './tokenStorage';
  */
 
 class ApiClient {
-  private baseUrl: string;
-  private timeout: number;
-
-  constructor() {
-    this.baseUrl = config.api.baseUrl;
-    this.timeout = config.api.timeout;
+  private getBaseUrl(): string {
+    return config.api.baseUrl;
   }
 
   /**
@@ -52,13 +48,13 @@ class ApiClient {
     endpoint: string,
     body?: unknown
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.getBaseUrl()}${endpoint}`;
 
     const controller = new AbortController();
     const isFormData = body instanceof FormData || (body && typeof (body as any).append === 'function');
     
-    // Give file uploads a much longer timeout (60s vs 10s)
-    const requestTimeout = isFormData ? 60000 : this.timeout;
+    // Give file uploads a much longer timeout (60s vs 15s)
+    const requestTimeout = isFormData ? 60000 : config.api.timeout;
     const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
 
     if (__DEV__) {
@@ -87,7 +83,15 @@ class ApiClient {
         console.log(`[PLASO API] Response: ${response.status} (${endTime - startTime}ms)`);
       }
 
-      const data = await response.json();
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        return {
+          success: response.ok,
+          message: response.statusText || 'Invalid response from server',
+        };
+      }
 
       return data as ApiResponse<T>;
     } catch (error) {
@@ -97,16 +101,16 @@ class ApiClient {
 
       if (isAbortError) {
         if (__DEV__) {
-          console.log(`[PLASO API] Timeout (${this.timeout}ms) or canceled: ${url}`);
+          console.log(`[PLASO API] Timeout (${requestTimeout}ms) or canceled: ${url}`);
         }
         return {
           success: false,
-          message: 'Request timed out or was canceled',
+          message: `Request timed out connecting to ${url}. Check your connection or server.`,
         };
       }
 
       if (__DEV__) {
-        console.log(`[PLASO API] Network error:`, error instanceof Error ? error.message : error);
+        console.log(`[PLASO API] Network error on ${url}:`, error instanceof Error ? error.message : error);
       }
 
       return {

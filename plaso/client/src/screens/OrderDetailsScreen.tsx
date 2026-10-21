@@ -29,8 +29,8 @@ export default function OrderDetailsScreen() {
   const [updating, setUpdating] = useState(false);
 
   // Custom UI Modals for Web
-  const [confirmDialog, setConfirmDialog] = useState<{title: string, message: string, confirmText: string, isDestructive?: boolean, onConfirm: () => void} | null>(null);
-  const [alertDialog, setAlertDialog] = useState<{title: string, message: string} | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string, message: string, confirmText: string, isDestructive?: boolean, onConfirm: () => void } | null>(null);
+  const [alertDialog, setAlertDialog] = useState<{ title: string, message: string } | null>(null);
 
   const showAlert = (title: string, message: string) => {
     if (Platform.OS === 'web') {
@@ -45,7 +45,7 @@ export default function OrderDetailsScreen() {
       const response = await orderApi.getOrderById(orderId);
       if (response.success && (response as any).order) {
         setOrder((response as any).order);
-        
+
         // Fetch review if eligible
         if ((response as any).order.orderStatus === OrderStatus.COMPLETED && !isAdminView) {
           try {
@@ -211,10 +211,12 @@ export default function OrderDetailsScreen() {
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.COMPLETED: return theme.colors.success;
+      case OrderStatus.CONFIRMED: return '#3B82F6';
+      case OrderStatus.PROCESSING: return '#8B5CF6';
+      case OrderStatus.READY: return theme.colors.primary;
       case OrderStatus.CANCELLED: return theme.colors.error;
       case OrderStatus.DISPUTED: return theme.colors.error;
-      case OrderStatus.READY: return theme.colors.primary;
-      default: return theme.colors.textSecondary;
+      default: return '#F59E0B';
     }
   };
 
@@ -242,21 +244,21 @@ export default function OrderDetailsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Progress Tracker Visual */}
         <View style={styles.progressSection}>
           <Text style={styles.orderNumberTitle}>Order #{order.orderNumber}</Text>
           <View style={styles.statusChips}>
-             <PlasoChip 
-                label={`Order: ${order.orderStatus}`} 
-                style={{ backgroundColor: getStatusColor(order.orderStatus), borderColor: getStatusColor(order.orderStatus) }}
-                selected={true}
-              />
-              <View style={{width: 8}} />
-              <PlasoChip 
-                label={`Payment: ${order.paymentStatus}`} 
-                style={{ borderColor: getPaymentColor(order.paymentStatus) }}
-              />
+            <PlasoChip
+              label={`Order: ${order.orderStatus}`}
+              style={{ backgroundColor: getStatusColor(order.orderStatus), borderColor: getStatusColor(order.orderStatus) }}
+              selected={true}
+            />
+            <View style={{ width: 8 }} />
+            <PlasoChip
+              label={`Payment: ${order.paymentStatus}`}
+              style={{ borderColor: getPaymentColor(order.paymentStatus) }}
+            />
           </View>
         </View>
 
@@ -290,23 +292,23 @@ export default function OrderDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Fulfillment Details</Text>
           <Text style={styles.infoLabel}>Type: <Text style={styles.infoText}>{order.fulfillmentType.replace('_', ' ')}</Text></Text>
-          
+
           {!!order.deliveryAddress && (
-            <View style={{marginTop: 8}}>
+            <View style={{ marginTop: 8 }}>
               <Text style={styles.infoLabel}>Delivery Address:</Text>
               <Text style={styles.infoText}>{order.deliveryAddress}</Text>
             </View>
           )}
 
           {!!(order.scheduledDate || order.scheduledTime) && (
-            <View style={{marginTop: 8}}>
+            <View style={{ marginTop: 8 }}>
               <Text style={styles.infoLabel}>Scheduled For:</Text>
               <Text style={styles.infoText}>{order.scheduledDate} {order.scheduledTime}</Text>
             </View>
           )}
 
           {!!order.customerNote && (
-            <View style={{marginTop: 8}}>
+            <View style={{ marginTop: 8 }}>
               <Text style={styles.infoLabel}>Note:</Text>
               <Text style={styles.infoText}>{order.customerNote}</Text>
             </View>
@@ -316,8 +318,19 @@ export default function OrderDetailsScreen() {
         {/* Timestamps */}
         <View style={styles.timestampsSection}>
           <Text style={styles.timestampText}>Placed on: {new Date(order.createdAt).toLocaleString('en-IN')}</Text>
+          {order.confirmedAt && <Text style={styles.timestampText}>Accepted on: {new Date(order.confirmedAt).toLocaleString('en-IN')}</Text>}
           {order.completedAt && <Text style={styles.timestampText}>Completed on: {new Date(order.completedAt).toLocaleString('en-IN')}</Text>}
-          {order.cancelledAt && <Text style={styles.timestampText}>Cancelled on: {new Date(order.cancelledAt).toLocaleString('en-IN')}</Text>}
+          {order.cancelledAt && (
+            <Text style={styles.timestampText}>
+              Cancelled on: {new Date(order.cancelledAt).toLocaleString('en-IN')}
+              {order.rejectionReason ? ` (Reason: ${order.rejectionReason})` : ''}
+            </Text>
+          )}
+          {order.orderStatus === OrderStatus.CANCELLED && order.paymentStatus === PaymentStatus.PAID && (
+            <Text style={[styles.timestampText, { color: '#F59E0B', marginTop: 4, fontWeight: '600' }]}>
+              Refund Status: Processing / Pending Verification
+            </Text>
+          )}
         </View>
 
       </ScrollView>
@@ -325,13 +338,13 @@ export default function OrderDetailsScreen() {
       {/* Action Buttons */}
       <View style={styles.footer}>
         {!isAdminView && order.orderStatus === OrderStatus.COMPLETED && [PaymentStatus.PAID, PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED].includes(order.paymentStatus) && (
-          <PlasoButton 
-            title={review ? 'Edit Review' : 'Rate Your Experience'} 
-            onPress={() => navigation.navigate('CreateReview' as any, { 
-              orderId: order._id, 
+          <PlasoButton
+            title={review ? 'Edit Review' : 'Rate Your Experience'}
+            onPress={() => navigation.navigate('CreateReview' as any, {
+              orderId: order._id,
               businessId: (order.business as any)?._id || order.business,
               listingId: (order.items[0]?.listing as any)?._id || order.items[0]?.listing,
-              reviewId: review?._id 
+              reviewId: review?._id
             })}
             style={{ marginBottom: 12, backgroundColor: review ? theme.colors.surface : theme.colors.primary }}
             textStyle={{ color: review ? theme.colors.primary : '#000' }}
@@ -339,17 +352,17 @@ export default function OrderDetailsScreen() {
         )}
 
         {canComplete && (
-          <PlasoButton 
-            title="Confirm Received" 
+          <PlasoButton
+            title="Confirm Received"
             onPress={handleConfirmCompletion}
             loading={updating}
             style={{ marginBottom: 12 }}
           />
         )}
-        
+
         {canCancel && (
-          <TouchableOpacity 
-            style={styles.cancelBtn} 
+          <TouchableOpacity
+            style={styles.cancelBtn}
             onPress={handleCancel}
             disabled={updating}
           >
@@ -358,18 +371,18 @@ export default function OrderDetailsScreen() {
         )}
 
         {canDispute && !canCancel && !canComplete && (
-           <TouchableOpacity 
-           style={styles.disputeBtn} 
-           onPress={handleDispute}
-           disabled={updating}
-         >
-           <Text style={styles.disputeBtnText}>Report an Issue / Dispute</Text>
-         </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.disputeBtn}
+            onPress={handleDispute}
+            disabled={updating}
+          >
+            <Text style={styles.disputeBtnText}>Report an Issue / Dispute</Text>
+          </TouchableOpacity>
         )}
 
         {isAdminView && order.paymentStatus === PaymentStatus.PAID && (
-          <TouchableOpacity 
-            style={[styles.cancelBtn, { marginTop: 12, borderColor: theme.colors.primary }]} 
+          <TouchableOpacity
+            style={[styles.cancelBtn, { marginTop: 12, borderColor: theme.colors.primary }]}
             onPress={handleRefund}
             disabled={updating}
           >
@@ -388,8 +401,8 @@ export default function OrderDetailsScreen() {
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setConfirmDialog(null)}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalConfirmBtn, confirmDialog?.isDestructive && { backgroundColor: theme.colors.error }]} 
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, confirmDialog?.isDestructive && { backgroundColor: theme.colors.error }]}
                 onPress={() => {
                   if (confirmDialog?.onConfirm) confirmDialog.onConfirm();
                   setConfirmDialog(null);

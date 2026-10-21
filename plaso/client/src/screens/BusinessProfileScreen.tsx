@@ -124,7 +124,9 @@ const BusinessProfileScreen = () => {
     );
   }
 
-  const isOwner = user?.id === business.owner?._id;
+  const currentUserId = user?._id || user?.id;
+  const businessOwnerId = business.owner?._id || business.owner;
+  const isOwner = !!(currentUserId && businessOwnerId && currentUserId.toString() === businessOwnerId.toString());
   const isAdmin = user?.role === 'ADMIN';
 
   return (
@@ -218,7 +220,7 @@ const BusinessProfileScreen = () => {
                 <PlasoButton 
                   title="Message"
                   variant="secondary"
-                  onPress={() => navigation.navigate('Chat', { businessId: business._id, targetUserId: business.owner?._id || business.owner })}
+                  onPress={() => navigation.navigate('Chat', { businessId: business._id, targetUserId: (business.owner?._id || business.owner)?.toString() })}
                   style={{ marginRight: 8 }}
                 />
                 <PlasoButton 

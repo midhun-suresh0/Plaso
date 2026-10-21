@@ -275,14 +275,24 @@ export class RecommendationService {
     const dateLimit = new Date();
     dateLimit.setDate(dateLimit.getDate() - 7); // Last 7 days
 
-    const trendingPosts = await Post.find({
-      visibility: 'PUBLIC',
+    let trendingPosts = await Post.find({
+      visibility: { $in: ['PUBLIC', 'NEARBY'] },
       createdAt: { $gte: dateLimit }
     } as any)
-      .sort({ likeCount: -1, commentCount: -1 })
-      .limit(10)
+      .sort({ likeCount: -1, commentCount: -1, createdAt: -1 })
+      .limit(15)
       .populate('author', 'name username profileImage')
       .populate('business', 'name logo');
+
+    if (!trendingPosts || trendingPosts.length === 0) {
+      trendingPosts = await Post.find({
+        visibility: { $in: ['PUBLIC', 'NEARBY'] }
+      } as any)
+        .sort({ likeCount: -1, commentCount: -1, createdAt: -1 })
+        .limit(15)
+        .populate('author', 'name username profileImage')
+        .populate('business', 'name logo');
+    }
 
     return {
       trendingPosts

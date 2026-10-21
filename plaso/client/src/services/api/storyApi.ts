@@ -26,7 +26,7 @@ export const storyApi = {
     backgroundColor?: string;
   }): Promise<Story> => {
     if (data.mediaType === 'TEXT') {
-      console.log('Sending formData:', JSON.stringify(formData)); const response = await api.post<Story>('/stories', data);
+      const response = await api.post<Story>('/stories', data);
       return response.data!;
     }
 

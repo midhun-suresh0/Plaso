@@ -41,7 +41,7 @@ export default function LoginScreen({ navigation }: Props) {
     setError('');
 
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login({ email: email.trim(), password });
       
       if (response.success && response.data) {
         await login(response.data.token, response.data.user);
@@ -49,7 +49,7 @@ export default function LoginScreen({ navigation }: Props) {
         setError(response.message || 'Login failed');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during login');
+      setError(err.response?.data?.message || err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }

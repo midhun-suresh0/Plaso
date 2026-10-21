@@ -25,6 +25,7 @@ import { MarketplaceListing, ListingType, PriceType, AvailabilityStatus } from '
 import { Review, ReviewStats } from '../types/review';
 import { getMarketplaceCategoryLabel } from '../constants/marketplaceCategories';
 import { getImageUrl } from '../utils';
+import { useAuth } from '../context/AuthContext';
 
 type RouteProps = RouteProp<RootStackParamList, 'ListingDetails'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -122,6 +123,33 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
     } finally {
       setAddingToCart(false);
     }
+  };
+
+  const { user } = useAuth();
+
+  const sellerId = typeof listing?.business === 'object' && listing?.business
+    ? ((listing.business as any).owner?._id || (listing.business as any).owner)
+    : undefined;
+  const isOwner = !!(user?._id && sellerId && user._id === sellerId.toString());
+
+  const handleMessageSeller = () => {
+    if (!listing) return;
+
+    if (isOwner) {
+      if (Platform.OS === 'web') {
+        window.alert('You cannot message yourself. This is your own listing.');
+      } else {
+        Alert.alert('Notice', 'You cannot message yourself. This is your own listing.');
+      }
+      return;
+    }
+
+    navigation.navigate('Chat', {
+      businessId: listing.business?._id,
+      targetUserId: sellerId ? sellerId.toString() : undefined,
+      listingId: listing._id,
+      initialMessage: `Hi, I am interested in "${listing.title}". Is it available?`,
+    });
   };
 
   if (loading) {
@@ -310,47 +338,29 @@ export default function ListingDetailsScreen({ navigation }: { navigation: Navig
       {/* Footer Action */}
       <View style={styles.footerAction}>
         {listing.availabilityStatus === AvailabilityStatus.AVAILABLE && listing.isActive ? (
-          <>
-            {listing.type === ListingType.PRODUCT ? (
-              <>
-                <PlasoButton
-                  title="Message Seller"
-                  onPress={() => navigation.navigate('Chat', { 
-                    businessId: listing.business._id,
-                    targetUserId: (listing.business as any).owner,
-                    listingId: listing._id
-                  })}
-                  variant="secondary"
-                  style={{ flex: 1, marginRight: 8 }}
-                />
-                <PlasoButton
-                  title="Buy Now"
-                  onPress={() => handleAddToCart(true)}
-                  loading={addingToCart}
-                  style={{ flex: 1 }}
-                />
-              </>
-            ) : (
-              <>
-                <PlasoButton
-                  title="Message"
-                  onPress={() => navigation.navigate('Chat', { 
-                    businessId: listing.business._id,
-                    targetUserId: (listing.business as any).owner,
-                    listingId: listing._id
-                  })}
-                  variant="secondary"
-                  style={{ flex: 1, marginRight: 8 }}
-                />
-                <PlasoButton
-                  title="Request Service"
-                  onPress={() => handleAddToCart(true)}
-                  loading={addingToCart}
-                  style={{ flex: 1 }}
-                />
-              </>
-            )}
-          </>
+          isOwner ? (
+            <PlasoButton
+              title="Edit Listing"
+              onPress={() => navigation.navigate('EditListing', { listing })}
+              variant="primary"
+              style={{ flex: 1 }}
+            />
+          ) : (
+            <>
+              <PlasoButton
+                title={listing.type === ListingType.PRODUCT ? "Message Seller" : "Message"}
+                onPress={handleMessageSeller}
+                variant="secondary"
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <PlasoButton
+                title={listing.type === ListingType.PRODUCT ? "Buy Now" : "Request Service"}
+                onPress={() => handleAddToCart(true)}
+                loading={addingToCart}
+                style={{ flex: 1 }}
+              />
+            </>
+          )
         ) : (
           <PlasoButton
             title="Currently Unavailable"

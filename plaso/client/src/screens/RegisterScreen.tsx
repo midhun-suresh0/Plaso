@@ -63,7 +63,7 @@ export default function RegisterScreen({ navigation }: Props) {
     setError('');
 
     try {
-      const response = await authApi.register({ name, email, password });
+      const response = await authApi.register({ name: name.trim(), email: email.trim(), password });
       
       if (response.success && response.data) {
         await login(response.data.token, response.data.user);
@@ -71,7 +71,7 @@ export default function RegisterScreen({ navigation }: Props) {
         setError(response.message || 'Registration failed');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during registration');
+      setError(err.response?.data?.message || err.message || 'An error occurred during registration');
     } finally {
       setLoading(false);
     }

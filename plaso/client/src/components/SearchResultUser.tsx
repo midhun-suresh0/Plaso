@@ -10,15 +10,17 @@ interface SearchResultUserProps {
 }
 
 export const SearchResultUser: React.FC<SearchResultUserProps> = ({ user, onPress }) => {
+  const displayName = user.name || (user.username ? `@${user.username}` : 'User');
+
   return (
     <TouchableOpacity 
       style={styles.container} 
       onPress={() => onPress(user)}
       activeOpacity={0.7}
     >
-      <PlasoAvatar uri={user.profileImage} name={user.name} size="md" />
+      <PlasoAvatar uri={user.profileImage} name={displayName} size="md" />
       <View style={styles.infoContainer}>
-        <Text style={styles.name}>{user.name}</Text>
+        <Text style={styles.name}>{displayName}</Text>
         {user.username && <Text style={styles.username}>@{user.username}</Text>}
       </View>
     </TouchableOpacity>

@@ -94,7 +94,7 @@ class MarketplaceService {
    */
   async getListingById(listingId: string): Promise<IMarketplaceListing> {
     const listing = await MarketplaceListing.findById(listingId)
-      .populate('business', 'name logo coverImage category verificationStatus isActive address openingHours')
+      .populate('business', 'name logo coverImage category verificationStatus isActive address openingHours owner')
       .lean();
 
     if (!listing) {

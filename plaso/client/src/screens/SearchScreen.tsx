@@ -1,14 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoBottomNav } from '../components/PlasoBottomNav';
 import { PostCard } from '../components/PostCard';
 import { SearchResultUser } from '../components/SearchResultUser';
+import { UserSuggestionCard } from '../components/UserSuggestionCard';
 import { theme } from '../constants/theme';
 import { searchApi, SearchUser } from '../services/searchApi';
 import { recommendationApi } from '../services/api/recommendationApi';
+import { discoveryApi, SuggestedUser } from '../services/discoveryApi';
 import { Post } from '../types/post';
 
 type Props = {
@@ -21,31 +33,50 @@ export default function SearchScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeTab, setActiveTab] = useState<SearchTab>('ALL');
-  
+
+  // Search Results
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
+  // Default Explore Data (shown when search query is empty)
+  const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
+  const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  // Load suggestions initially or when query is very short
-  useEffect(() => {
-    if (query.trim().length < 2) {
-      loadSuggestions(query);
-    }
-  }, [query]);
-
-  const loadSuggestions = async (q: string) => {
+  // Load default explore content (suggested people & trending posts)
+  const loadDefaultExplore = async () => {
     try {
-      const res = await recommendationApi.getSearchSuggestions(q);
-      if (res.success && res.data) {
-        setSuggestions(res.data);
+      const [usersRes, trendingRes, suggestionsRes] = await Promise.allSettled([
+        discoveryApi.getSuggestedUsers(15),
+        recommendationApi.getTrending(),
+        recommendationApi.getSearchSuggestions(''),
+      ]);
+
+      if (usersRes.status === 'fulfilled' && usersRes.value.success && usersRes.value.data) {
+        setSuggestedUsers(usersRes.value.data);
       }
-    } catch (e) {
-      console.error(e);
+      if (trendingRes.status === 'fulfilled' && trendingRes.value.success && trendingRes.value.data) {
+        setTrendingPosts(trendingRes.value.data.trendingPosts || []);
+      }
+      if (suggestionsRes.status === 'fulfilled' && suggestionsRes.value.success && suggestionsRes.value.data) {
+        setSuggestions(suggestionsRes.value.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load explore content:', error);
+    } finally {
+      setInitialLoading(false);
+      setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    loadDefaultExplore();
+  }, []);
 
   // Debounce the search query
   useEffect(() => {
@@ -63,6 +94,7 @@ export default function SearchScreen({ navigation }: Props) {
       setUsers([]);
       setPosts([]);
       setSearched(false);
+      setLoading(false);
     }
   }, [debouncedQuery, activeTab]);
 
@@ -71,14 +103,14 @@ export default function SearchScreen({ navigation }: Props) {
     setSearched(true);
     try {
       if (tab === 'ALL' || tab === 'PEOPLE') {
-        const userRes = await searchApi.searchUsers(searchQuery, 1, 10);
+        const userRes = await searchApi.searchUsers(searchQuery, 1, 15);
         if (userRes.success && userRes.data) {
           setUsers(userRes.data.users);
         }
       }
-      
+
       if (tab === 'ALL' || tab === 'POSTS') {
-        const postRes = await searchApi.searchPosts(searchQuery, 1, 10);
+        const postRes = await searchApi.searchPosts(searchQuery, 1, 15);
         if (postRes.success && postRes.data) {
           setPosts(postRes.data.posts);
         }
@@ -87,16 +119,28 @@ export default function SearchScreen({ navigation }: Props) {
       console.error('Search failed', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleUserPress = (user: SearchUser) => {
+  const onRefresh = () => {
+    setRefreshing(true);
+    if (debouncedQuery.trim().length > 0) {
+      performSearch(debouncedQuery, activeTab);
+    } else {
+      loadDefaultExplore();
+    }
+  };
+
+  const handleUserPress = (user: SearchUser | SuggestedUser) => {
     navigation.navigate('UserProfile', { userId: user._id });
   };
 
   const handlePostPress = (post: Post) => {
     navigation.navigate('PostDetails', { post });
   };
+
+  const isSearching = debouncedQuery.trim().length > 0;
 
   const renderTabs = () => (
     <View style={styles.tabContainer}>
@@ -115,42 +159,110 @@ export default function SearchScreen({ navigation }: Props) {
   );
 
   const renderEmptyState = () => {
-    if (loading) return null;
-    
-    if (!searched) {
-      if (suggestions.length > 0) {
-        return (
-          <View style={styles.suggestionsWrapper}>
-            <Text style={styles.suggestionsHeader}>Suggested for you</Text>
-            {suggestions.map((s, index) => (
-              <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => { setQuery(s); setDebouncedQuery(s); }}>
-                <Ionicons name="search-outline" size={16} color={theme.colors.textSecondary} />
-                <Text style={styles.suggestionText}>{s}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        );
-      }
+    if (loading || initialLoading) return null;
+
+    if (isSearching) {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} />
-          <Text style={styles.emptyTitle}>Search Plaso</Text>
-          <Text style={styles.emptyText}>Find people and posts on the platform.</Text>
+          <Text style={styles.emptyTitle}>No results found</Text>
+          <Text style={styles.emptyText}>
+            No results found for "{debouncedQuery}". Try searching with different keywords.
+          </Text>
         </View>
       );
     }
-    
+
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} />
-        <Text style={styles.emptyTitle}>No results found</Text>
-        <Text style={styles.emptyText}>Try searching with different keywords.</Text>
+        <Ionicons name="compass-outline" size={64} color={theme.colors.textSecondary} />
+        <Text style={styles.emptyTitle}>Explore Plaso</Text>
+        <Text style={styles.emptyText}>Connect with people and discover trending posts.</Text>
       </View>
     );
   };
 
+  const buildListData = () => {
+    const list: any[] = [];
+
+    if (isSearching) {
+      // Search Results Mode
+      if (activeTab === 'ALL' || activeTab === 'PEOPLE') {
+        if (users.length > 0) {
+          if (activeTab === 'ALL') {
+            list.push({ id: 'header-users', type: 'header', title: 'People' });
+          }
+          users.forEach(u => list.push({ id: `user-${u._id}`, type: 'user', data: u }));
+        }
+      }
+
+      if (activeTab === 'ALL' || activeTab === 'POSTS') {
+        if (posts.length > 0) {
+          if (activeTab === 'ALL') {
+            list.push({ id: 'header-posts', type: 'header', title: 'Posts' });
+          }
+          posts.forEach(p => list.push({ id: `post-${p._id}`, type: 'post', data: p }));
+        }
+      }
+    } else {
+      // Default Explore Mode (when search input is empty)
+      if (activeTab === 'ALL') {
+        // Suggested chips if available
+        if (suggestions.length > 0) {
+          list.push({ id: 'chips-suggestions', type: 'chips', data: suggestions });
+        }
+
+        // Horizontal Discover People Carousel
+        if (suggestedUsers.length > 0) {
+          list.push({
+            id: 'header-explore-people',
+            type: 'header',
+            title: 'Discover People',
+            actionText: 'See all',
+            onAction: () => setActiveTab('PEOPLE'),
+          });
+          list.push({
+            id: 'carousel-users',
+            type: 'carousel-users',
+            data: suggestedUsers,
+          });
+        }
+
+        // Trending Posts Section
+        if (trendingPosts.length > 0) {
+          list.push({
+            id: 'header-explore-posts',
+            type: 'header',
+            title: 'Trending Posts',
+          });
+          trendingPosts.forEach(p => list.push({ id: `trending-post-${p._id}`, type: 'post', data: p }));
+        }
+      } else if (activeTab === 'PEOPLE') {
+        if (suggestedUsers.length > 0) {
+          list.push({
+            id: 'header-suggested-people',
+            type: 'header',
+            title: 'Suggested For You',
+          });
+          suggestedUsers.forEach(u => list.push({ id: `suggested-user-${u._id}`, type: 'user', data: u }));
+        }
+      } else if (activeTab === 'POSTS') {
+        if (trendingPosts.length > 0) {
+          list.push({
+            id: 'header-trending-posts',
+            type: 'header',
+            title: 'Trending Posts',
+          });
+          trendingPosts.forEach(p => list.push({ id: `trending-post-${p._id}`, type: 'post', data: p }));
+        }
+      }
+    }
+
+    return list;
+  };
+
   const renderContent = () => {
-    if (loading) {
+    if ((loading || initialLoading) && !refreshing) {
       return (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -158,43 +270,115 @@ export default function SearchScreen({ navigation }: Props) {
       );
     }
 
-    if (searched && users.length === 0 && posts.length === 0) {
-      return renderEmptyState();
-    }
+    const listData = buildListData();
 
-    const data: any[] = [];
-    if (activeTab === 'ALL' || activeTab === 'PEOPLE') {
-      if (users.length > 0) {
-        if (activeTab === 'ALL') data.push({ type: 'header', title: 'People' });
-        users.forEach(u => data.push({ type: 'user', data: u }));
-      }
-    }
-
-    if (activeTab === 'ALL' || activeTab === 'POSTS') {
-      if (posts.length > 0) {
-        if (activeTab === 'ALL') data.push({ type: 'header', title: 'Posts' });
-        posts.forEach(p => data.push({ type: 'post', data: p }));
-      }
+    if (listData.length === 0) {
+      return (
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
+          }
+        >
+          {renderEmptyState()}
+        </ScrollView>
+      );
     }
 
     return (
       <FlatList
-        data={data}
-        keyExtractor={(item, index) => `${item.type}-${item.data?._id || index}`}
+        data={listData}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           if (item.type === 'header') {
-            return <Text style={styles.sectionHeader}>{item.title}</Text>;
+            return (
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeader}>{item.title}</Text>
+                {item.actionText && (
+                  <TouchableOpacity onPress={item.onAction}>
+                    <Text style={styles.seeAllText}>{item.actionText}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
           }
+
+          if (item.type === 'chips') {
+            return (
+              <View style={styles.chipsWrapper}>
+                <Text style={styles.chipsLabel}>Suggested searches</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                  {item.data.map((s: any, idx: number) => {
+                    const text = typeof s === 'string' ? s : s.text || s.query;
+                    if (!text) return null;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.chip}
+                        onPress={() => {
+                          setQuery(text);
+                          setDebouncedQuery(text);
+                        }}
+                      >
+                        <Ionicons name="search-outline" size={14} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
+                        <Text style={styles.chipText}>{text}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            );
+          }
+
+          if (item.type === 'carousel-users') {
+            return (
+              <View style={styles.carouselContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselScroll}>
+                  {item.data.map((u: SuggestedUser) => (
+                    <UserSuggestionCard
+                      key={u._id}
+                      user={u}
+                      onFollow={() => {
+                        // Optimistically refresh suggestions
+                        loadDefaultExplore();
+                      }}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            );
+          }
+
           if (item.type === 'user') {
             return <SearchResultUser user={item.data} onPress={handleUserPress} />;
           }
+
           if (item.type === 'post') {
-            return <PostCard post={item.data} onPress={handlePostPress} />;
+            return (
+              <PostCard
+                post={item.data}
+                onPress={handlePostPress}
+                onCommentPress={handlePostPress}
+              />
+            );
           }
+
           return null;
         }}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmptyState}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
       />
     );
   };
@@ -228,7 +412,7 @@ export default function SearchScreen({ navigation }: Props) {
       </View>
 
       {renderTabs()}
-      
+
       {renderContent()}
 
       <PlasoBottomNav activeTab="Explore" />
@@ -287,15 +471,26 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   listContent: {
-    paddingBottom: 100, // For Bottom Nav
+    paddingBottom: 110, // For Bottom Nav
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
   },
   sectionHeader: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   loaderContainer: {
     flex: 1,
@@ -307,6 +502,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 100,
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyTitle: {
     color: theme.colors.text,
@@ -314,30 +510,55 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   emptyText: {
     color: theme.colors.textSecondary,
     fontSize: theme.typography.sizes.md,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  suggestionsWrapper: {
-    padding: theme.spacing.lg,
-  },
-  suggestionsHeader: {
-    color: theme.colors.textSecondary,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: theme.spacing.md,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+  chipsWrapper: {
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  suggestionText: {
+  chipsLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: theme.spacing.xs,
+  },
+  chipsScroll: {
+    paddingVertical: theme.spacing.xs,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceHighlight,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radii.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginRight: 6,
+  },
+  chipText: {
     color: theme.colors.text,
-    fontSize: 16,
-    marginLeft: theme.spacing.md,
-  }
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  carouselContainer: {
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  carouselScroll: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xs,
+  },
 });

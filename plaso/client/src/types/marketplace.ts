@@ -26,6 +26,7 @@ export interface MarketplaceListing {
     isActive?: boolean;
     category?: string;
     address?: string;
+    owner?: any;
   };
   type: ListingType;
   title: string;

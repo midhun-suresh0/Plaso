@@ -11,10 +11,12 @@ export interface NotificationSender {
 export interface Notification {
   _id: string;
   recipient: string;
-  sender: NotificationSender;
-  type: 'LIKE' | 'COMMENT' | 'FOLLOW' | 'MENTION';
+  sender?: NotificationSender | null;
+  type: 'LIKE' | 'COMMENT' | 'FOLLOW' | 'MENTION' | 'ORDER_CREATED' | 'ORDER_STATUS_UPDATED' | 'SYSTEM' | string;
   post?: any; // To allow flexibility for populated post data (usually content)
   comment?: string;
+  order?: any;
+  message?: string;
   isRead: boolean;
   createdAt: string;
 }
