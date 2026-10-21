@@ -19,7 +19,7 @@ class EmailService {
     const emailHost = process.env.EMAIL_HOST;
     const emailPort = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : undefined;
     const emailUser = process.env.EMAIL_USER;
-    const emailPassword = process.env.EMAIL_PASSWORD;
+    const emailPassword = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
     if (emailHost && emailUser && emailPassword) {
       this.transporter = nodemailer.createTransport({

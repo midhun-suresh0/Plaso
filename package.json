@@ -1,0 +1,10 @@
+{
+  "name": "plaso-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plaso Hyperlocal Commerce Monorepo",
+  "scripts": {
+    "build": "npm --prefix plaso/server install && npm --prefix plaso/server run build",
+    "start": "npm --prefix plaso/server start"
+  }
+}
