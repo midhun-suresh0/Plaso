@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
+    "prebuild": "npm install --include=dev",
     "build": "tsc",
     "start": "node dist/server.js"
   },
@@ -17,7 +18,15 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.2.0",
+    "@types/nodemailer": "^8.0.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -32,20 +41,12 @@
     "nodemailer": "^9.0.5",
     "razorpay": "^2.9.8",
     "slugify": "^1.6.9",
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/morgan": "^1.9.10",
-    "@types/multer": "^2.2.0",
-    "@types/node": "^26.2.0",
-    "@types/nodemailer": "^8.0.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "tsx": "^4.23.11",
-    "typescript": "^7.0.2"
+    "tsx": "^4.23.11"
   }
 }
