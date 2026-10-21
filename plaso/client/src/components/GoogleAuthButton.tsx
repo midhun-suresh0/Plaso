@@ -6,23 +6,27 @@ import { theme } from '../constants/theme';
 import { authApi } from '../services/authApi';
 import { useAuth } from '../context/AuthContext';
 
-let GoogleSignin: any;
+let GoogleSignin: any = null;
 let statusCodes: any = {};
 
-try {
-  const GoogleSigninModule = require('@react-native-google-signin/google-signin');
-  GoogleSignin = GoogleSigninModule.GoogleSignin;
-  statusCodes = GoogleSigninModule.statusCodes;
-  
-  // Initialize Google Sign-In
-  GoogleSignin.configure({
-    webClientId: config.google.webClientId,
-    iosClientId: config.google.iosClientId,
-    offlineAccess: false,
-  });
-} catch (e) {
-  console.warn('GoogleSignin could not be loaded. Are you running in Expo Go?', e);
-}
+const getGoogleSignin = () => {
+  if (GoogleSignin) return GoogleSignin;
+  try {
+    const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = GoogleSigninModule.GoogleSignin;
+    statusCodes = GoogleSigninModule.statusCodes || {};
+    
+    GoogleSignin.configure({
+      webClientId: config.google.webClientId,
+      iosClientId: config.google.iosClientId,
+      offlineAccess: false,
+    });
+    return GoogleSignin;
+  } catch (e) {
+    console.warn('GoogleSignin could not be loaded:', e);
+    return null;
+  }
+};
 
 interface Props {
   onSuccess?: () => void;
@@ -36,20 +40,22 @@ export const GoogleAuthButton: React.FC<Props> = ({ onSuccess, onError }) => {
   const handleGoogleLogin = async () => {
     if (loading) return;
     
-    if (!GoogleSignin) {
+    const signinInstance = getGoogleSignin();
+    if (!signinInstance) {
       Alert.alert(
-        "Development Client Required", 
-        "Google Sign-In requires a custom dev client. It does not work in Expo Go. Please build with 'npx expo run:android' or 'npx expo run:ios'."
+        "Notice", 
+        "Google Sign-In is not available in this environment. Please log in with email and password."
       );
-      if (onError) onError('Google Sign-In not supported in Expo Go.');
+      if (onError) onError('Google Sign-In not supported.');
       return;
     }
+
 
     setLoading(true);
 
     try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
+      await signinInstance.hasPlayServices();
+      const response = await signinInstance.signIn();
       
       if (response.type === 'cancelled') {
         if (onError) onError('Google Sign-In was cancelled.');

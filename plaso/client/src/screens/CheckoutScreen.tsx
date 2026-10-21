@@ -9,8 +9,14 @@ import { PlasoInput } from '../components/PlasoInput';
 import { theme } from '../constants/theme';
 import { cartApi } from '../services/api/cartApi';
 import { orderApi } from '../services/api/orderApi';
+let RazorpayCheckout: any = null;
+try {
+  RazorpayCheckout = require('react-native-razorpay').default || require('react-native-razorpay');
+} catch (e) {
+  console.warn('RazorpayCheckout could not be loaded:', e);
+}
+
 import { paymentApi } from '../services/api/paymentApi';
-import RazorpayCheckout from 'react-native-razorpay';
 import { Cart } from '../types/order';
 import { ListingType } from '../types/marketplace';
 import { loadRazorpayScript } from '../utils/razorpayWeb';
