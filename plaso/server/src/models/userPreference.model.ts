@@ -36,6 +36,5 @@ const UserPreferenceSchema: Schema = new Schema(
   }
 );
 
-UserPreferenceSchema.index({ user: 1 });
-
 export default mongoose.model<IUserPreference>('UserPreference', UserPreferenceSchema);
+

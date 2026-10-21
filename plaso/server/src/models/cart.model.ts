@@ -51,6 +51,5 @@ const CartSchema: Schema = new Schema(
   }
 );
 
-CartSchema.index({ user: 1 });
-
 export default mongoose.model<ICart>('Cart', CartSchema);
+

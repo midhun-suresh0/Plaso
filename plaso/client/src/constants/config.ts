@@ -30,7 +30,7 @@ const getDevApiBaseUrl = (): string => {
 export const config = {
   api: {
     get baseUrl(): string {
-      return __DEV__ ? getDevApiBaseUrl() : 'https://api.plaso.app/api';
+      return __DEV__ ? getDevApiBaseUrl() : 'https://plaso.onrender.com/api';
     },
     timeout: 15000, // 15 seconds
   },
