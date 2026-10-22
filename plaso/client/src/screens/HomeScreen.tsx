@@ -53,7 +53,10 @@ export default function HomeScreen({ navigation }: Props) {
         response = await recommendationApi.getTrending();
         // trending api doesn't have pagination yet
         if (response.success && response.data) {
-          setPosts(response.data);
+          const trendingList = Array.isArray(response.data)
+            ? response.data
+            : (response.data.trendingPosts || response.data.posts || []);
+          setPosts(trendingList);
           setHasMore(false);
         }
       } else {
@@ -222,12 +225,18 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.emptyContainer}>
         <Ionicons name="compass-outline" size={64} color={theme.colors.textSecondary} />
         <Text style={styles.emptyTitle}>
-          {activeTab === 'nearby' ? 'Nothing happening nearby yet.' : 'Your feed is empty.'}
+          {activeTab === 'nearby' 
+            ? 'Nothing happening nearby yet.' 
+            : activeTab === 'trending'
+              ? 'No trending posts yet.'
+              : 'Your feed is empty.'}
         </Text>
         <Text style={styles.emptyText}>
           {activeTab === 'nearby' 
             ? "Be the first to share what's happening around you." 
-            : 'Check out the Nearby tab or create a post.'}
+            : activeTab === 'trending'
+              ? 'Posts with the most engagement will appear here.'
+              : 'Check out the Nearby tab or create a post.'}
         </Text>
         <TouchableOpacity 
           style={styles.emptyButton}

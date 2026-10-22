@@ -64,7 +64,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
     }
   };
 
-  const isOwner = user?._id === post.author._id || user?.id === post.author._id; // Accommodating different user id formats
+  const authorId = typeof post.author === 'string' ? post.author : post.author?._id;
+  const isOwner = Boolean(user?._id && authorId && (user._id === authorId || user.id === authorId));
   const hasLocation = !!post.locationName || post.distanceKm !== undefined || !!post.distance;
   const distanceStr = post.distanceKm !== undefined
     ? `${post.distanceKm} km away`
@@ -76,8 +77,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
   const handleAuthorPress = () => {
     if (isOwner) {
       navigation.navigate('Profile');
-    } else {
-      navigation.navigate('UserProfile', { userId: post.author._id });
+    } else if (authorId) {
+      navigation.navigate('UserProfile', { userId: authorId });
     }
   };
 

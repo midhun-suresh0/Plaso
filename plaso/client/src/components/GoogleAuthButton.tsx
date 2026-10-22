@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 let GoogleSignin: any = null;
 let statusCodes: any = {};
 
-const getGoogleSignin = () => {
+const getGoogleSignin = (): any => {
   return null;
 };
 

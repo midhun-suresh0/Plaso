@@ -295,7 +295,8 @@ export class RecommendationService {
     }
 
     return {
-      trendingPosts
+      trendingPosts,
+      posts: trendingPosts
     };
   }
 

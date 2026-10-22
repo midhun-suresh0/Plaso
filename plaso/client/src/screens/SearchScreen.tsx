@@ -61,7 +61,10 @@ export default function SearchScreen({ navigation }: Props) {
         setSuggestedUsers(usersRes.value.data);
       }
       if (trendingRes.status === 'fulfilled' && trendingRes.value.success && trendingRes.value.data) {
-        setTrendingPosts(trendingRes.value.data.trendingPosts || []);
+        const trendingList = Array.isArray(trendingRes.value.data)
+          ? trendingRes.value.data
+          : (trendingRes.value.data.trendingPosts || trendingRes.value.data.posts || []);
+        setTrendingPosts(trendingList);
       }
       if (suggestionsRes.status === 'fulfilled' && suggestionsRes.value.success && suggestionsRes.value.data) {
         setSuggestions(suggestionsRes.value.data || []);
