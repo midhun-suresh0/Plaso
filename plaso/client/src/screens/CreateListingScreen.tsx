@@ -108,22 +108,23 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
           formData.append('unit', unit.trim());
         }
 
-        // Handle images asynchronously to support web blobs
+        // Handle images asynchronously to support web blobs and native device formats
         for (let index = 0; index < images.length; index++) {
           const uri = images[index];
-          const filename = uri.split('/').pop() || `image_${index}.jpg`;
-          const match = /\.(\w+)$/.exec(filename);
-          const ext = match ? match[1] : 'jpg';
-          const fileType = `image/${ext}`;
+          const rawName = uri.split('/').pop() || `image_${index}.jpg`;
+          const match = /\.(\w+)$/.exec(rawName);
+          const ext = (match && match[1]) ? match[1].toLowerCase() : 'jpg';
+          const fileType = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+          const safeName = rawName.includes('.') ? rawName : `listing_${Date.now()}_${index}.${ext}`;
           
           if (Platform.OS === 'web') {
             const response = await fetch(uri);
             const blob = await response.blob();
-            formData.append('images', blob, filename);
+            formData.append('images', blob, safeName);
           } else {
             formData.append('images', {
               uri,
-              name: filename,
+              name: safeName,
               type: fileType,
             } as any);
           }

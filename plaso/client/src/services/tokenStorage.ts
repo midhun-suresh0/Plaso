@@ -57,4 +57,59 @@ export const tokenStorage = {
       throw error;
     }
   },
+
+  /**
+   * Saves custom backend server URL
+   */
+  async saveServerUrl(url: string): Promise<void> {
+    try {
+      const KEY = 'plaso_custom_server_url';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(KEY, url);
+        }
+      } else {
+        await SecureStore.setItemAsync(KEY, url);
+      }
+    } catch (error) {
+      console.error('Error saving custom server URL:', error);
+    }
+  },
+
+  /**
+   * Retrieves custom backend server URL
+   */
+  async getServerUrl(): Promise<string | null> {
+    try {
+      const KEY = 'plaso_custom_server_url';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') {
+          return window.localStorage.getItem(KEY);
+        }
+        return null;
+      }
+      return await SecureStore.getItemAsync(KEY);
+    } catch (error) {
+      console.error('Error retrieving custom server URL:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Clears custom backend server URL
+   */
+  async removeServerUrl(): Promise<void> {
+    try {
+      const KEY = 'plaso_custom_server_url';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(KEY);
+        }
+      } else {
+        await SecureStore.deleteItemAsync(KEY);
+      }
+    } catch (error) {
+      console.error('Error removing custom server URL:', error);
+    }
+  },
 };

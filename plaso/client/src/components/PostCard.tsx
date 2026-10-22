@@ -8,6 +8,7 @@ import { PlasoAvatar } from './PlasoAvatar';
 import { postApi } from '../services/postApi';
 import { useAuth } from '../context/AuthContext';
 import { config } from '../constants/config';
+import { getImageUrl } from '../utils';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -80,13 +81,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress, onCommentPres
     } else if (authorId) {
       navigation.navigate('UserProfile', { userId: authorId });
     }
-  };
-
-  const getImageUrl = (path: string) => {
-    if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('file:') || path.startsWith('blob:')) {
-      return path;
-    }
-    return config.api.baseUrl.replace('/api', '') + path;
   };
 
   const handleNotInterested = async () => {

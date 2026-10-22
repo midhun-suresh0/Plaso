@@ -8,7 +8,7 @@ import { RootStackParamList } from '../types';
 import { StoryGroup } from '../types/story';
 import { storyApi } from '../services/api/storyApi';
 import { useAuth } from '../context/AuthContext';
-import { config } from '../constants/config';
+import { getImageUrl } from '../utils';
 import { PlasoAvatar } from './PlasoAvatar';
 
 export const StoryRow: React.FC = () => {
@@ -36,14 +36,6 @@ export const StoryRow: React.FC = () => {
       return () => clearInterval(interval);
     }, [])
   );
-
-  const getImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http') || path.startsWith('file:') || path.startsWith('data:')) {
-      return path;
-    }
-    return config.api.baseUrl.replace('/api', '') + path;
-  };
 
   const handleStoryPress = (index: number) => {
     navigation.navigate('StoryViewer', { storyGroups, initialGroupIndex: index });

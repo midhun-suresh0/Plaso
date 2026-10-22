@@ -20,7 +20,7 @@ export const createListing = async (req: Request, res: Response, next: NextFunct
     // New uploaded images
     if (req.files && Array.isArray(req.files)) {
       const files = req.files as Express.Multer.File[];
-      allImages = [...allImages, ...files.map(file => `/uploads/${file.filename}`)];
+      allImages = [...allImages, ...files.map(file => `/uploads/listings/${file.filename}`)];
     }
     
     req.body.images = allImages.length > 0 ? allImages : undefined;
@@ -55,7 +55,7 @@ export const updateListing = async (req: Request, res: Response, next: NextFunct
     if (req.files && Array.isArray(req.files)) {
       hasImageUpdates = true;
       const files = req.files as Express.Multer.File[];
-      allImages = [...allImages, ...files.map(file => `/uploads/${file.filename}`)];
+      allImages = [...allImages, ...files.map(file => `/uploads/listings/${file.filename}`)];
     }
     
     if (hasImageUpdates) {

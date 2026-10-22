@@ -3,7 +3,13 @@ import path from 'path';
 import fs from 'fs';
 
 // Ensure upload directories exist
-const uploadDirs = ['public/uploads/posts', 'public/uploads/profiles', 'public/uploads/stories'];
+const uploadDirs = [
+  'public/uploads',
+  'public/uploads/posts',
+  'public/uploads/profiles',
+  'public/uploads/stories',
+  'public/uploads/listings',
+];
 uploadDirs.forEach(dir => {
   const fullPath = path.join(process.cwd(), dir);
   if (!fs.existsSync(fullPath)) {
@@ -20,12 +26,22 @@ const storage = multer.diskStorage({
       dest += 'profiles';
     } else if (file.fieldname === 'storyMedia') {
       dest += 'stories';
+    } else if (file.fieldname === 'images') {
+      dest += 'listings';
     }
     cb(null, dest);
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    let ext = path.extname(file.originalname);
+    if (!ext || ext === '.') {
+      if (file.mimetype === 'image/png') ext = '.png';
+      else if (file.mimetype === 'image/webp') ext = '.webp';
+      else if (file.mimetype === 'image/gif') ext = '.gif';
+      else if (file.mimetype.includes('image')) ext = '.jpg';
+      else ext = '.bin';
+    }
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
   }
 });
 

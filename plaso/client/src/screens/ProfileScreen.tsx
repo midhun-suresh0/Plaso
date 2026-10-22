@@ -9,6 +9,7 @@ import { PlasoCard } from '../components/PlasoCard';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { BackendDiagnosticsModal } from '../components/BackendDiagnosticsModal';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, 'Profile'>;
@@ -17,6 +18,7 @@ type Props = {
 export default function ProfileScreen({ navigation }: Props) {
   const { user, checkAuth, logout } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const refreshProfile = async () => {
     setLoading(true);
@@ -289,6 +291,19 @@ export default function ProfileScreen({ navigation }: Props) {
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </View>
             </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity 
+              style={styles.settingRow} 
+              onPress={() => setShowDiagnostics(true)}
+            >
+              <Ionicons name="pulse-outline" size={20} color={theme.colors.primary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>Backend & Server Test</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
           </PlasoCard>
 
           <View style={styles.logoutContainer}>
@@ -302,6 +317,11 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      <BackendDiagnosticsModal
+        visible={showDiagnostics}
+        onClose={() => setShowDiagnostics(false)}
+      />
     </PlasoScreen>
   );
 }

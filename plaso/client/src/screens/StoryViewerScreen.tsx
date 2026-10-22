@@ -17,7 +17,7 @@ import { theme, colors } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { storyApi } from '../services/api/storyApi';
 import { useAuth } from '../context/AuthContext';
-import { config } from '../constants/config';
+import { getImageUrl } from '../utils';
 import { PlasoAvatar } from '../components/PlasoAvatar';
 
 const { width, height } = Dimensions.get('window');
@@ -166,14 +166,6 @@ export const StoryViewerScreen: React.FC = () => {
     
     setIsReplying(false);
     setReplyText('');
-  };
-
-  const getImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http') || path.startsWith('file:') || path.startsWith('data:')) {
-      return path;
-    }
-    return config.api.baseUrl.replace('/api', '') + path;
   };
 
   const handleDelete = () => {

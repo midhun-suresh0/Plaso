@@ -37,3 +37,8 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Uploaded media
+public/uploads/
+!public/uploads/.gitkeep
+plaso/server/public/uploads/
