@@ -38,5 +38,6 @@ export const config = {
     webClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',
     androidClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',
     iosClientId: '80819047360-05l6sga67nup4baf0khpib8lmm5cb6kg.apps.googleusercontent.com',
+    redirectUri: 'http://localhost:8081',
   }
 } as const;
