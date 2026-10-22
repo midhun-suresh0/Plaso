@@ -3,6 +3,8 @@ import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-nativ
 import { WebView } from 'react-native-webview';
 import { theme } from '../constants/theme';
 
+export type MapTileType = 'osm-standard' | 'osm-dark' | 'osm-hot' | 'osm-topo';
+
 export interface MapMarkerItem {
   id: string;
   latitude: number;
@@ -20,6 +22,7 @@ export interface MapMarkerItem {
 export interface UniversalMapProps {
   center: { latitude: number; longitude: number };
   radius?: number; // in kilometers
+  tileType?: MapTileType;
   markers?: MapMarkerItem[];
   userLocation?: { latitude: number; longitude: number } | null;
   showsUserLocation?: boolean;
@@ -33,6 +36,7 @@ export interface UniversalMapProps {
 export interface UniversalMapRef {
   centerOn: (latitude: number, longitude: number, zoom?: number) => void;
   setZoom: (zoom: number) => void;
+  setTileType: (type: MapTileType) => void;
 }
 
 const buildLeafletHtml = (
@@ -40,7 +44,8 @@ const buildLeafletHtml = (
   initialRadius: number,
   initialMarkers: MapMarkerItem[],
   initialUserLoc: { latitude: number; longitude: number } | null,
-  initialMode: 'view' | 'picker'
+  initialMode: 'view' | 'picker',
+  initialTileType: MapTileType = 'osm-standard'
 ) => {
   const jsonCenter = JSON.stringify(initialCenter);
   const jsonMarkers = JSON.stringify(initialMarkers || []);
@@ -70,6 +75,22 @@ const buildLeafletHtml = (
       width: 100%;
       height: 100%;
       background-color: #0b1120;
+    }
+
+    /* OpenStreetMap Attribution Styling */
+    .leaflet-control-attribution {
+      background: rgba(11, 17, 32, 0.75) !important;
+      color: #94A3B8 !important;
+      font-size: 10px !important;
+      padding: 3px 8px !important;
+      border-radius: 6px !important;
+      margin: 6px !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    .leaflet-control-attribution a {
+      color: #38BDF8 !important;
+      text-decoration: none !important;
+      font-weight: 600 !important;
     }
     
     /* Marker Styles */
@@ -262,12 +283,67 @@ const buildLeafletHtml = (
     var markersLayer = L.layerGroup();
     var circleLayer = L.layerGroup();
     var userLayer = L.layerGroup();
+    var activeTileLayer = null;
 
     var currentCenter = ${jsonCenter};
     var currentRadius = ${initialRadius};
     var currentMode = "${initialMode}";
     var allMarkers = ${jsonMarkers};
     var currentUserLoc = ${jsonUserLoc};
+    var currentTileType = "${initialTileType || 'osm-standard'}";
+
+    // OpenStreetMap Tile Providers
+    var TILE_PROVIDERS = {
+      'osm-standard': {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        subdomains: 'abc',
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      },
+      'osm-dark': {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        subdomains: 'abcd',
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO'
+      },
+      'osm-hot': {
+        url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+        subdomains: 'abc',
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Humanitarian style'
+      },
+      'osm-topo': {
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        subdomains: 'abc',
+        maxZoom: 17,
+        attribution: 'Map: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Style: &copy; OpenTopoMap'
+      }
+    };
+
+    function applyTileLayer(type) {
+      if (!TILE_PROVIDERS[type]) type = 'osm-standard';
+      currentTileType = type;
+      var conf = TILE_PROVIDERS[type];
+
+      if (activeTileLayer && map) {
+        map.removeLayer(activeTileLayer);
+      }
+
+      activeTileLayer = L.tileLayer(conf.url, {
+        subdomains: conf.subdomains,
+        maxZoom: conf.maxZoom,
+        attribution: conf.attribution
+      });
+
+      // Automatic fallback to OSM HOT if standard tiles encounter network issue
+      activeTileLayer.on('tileerror', function() {
+        console.warn('Tile load error on', conf.url);
+      });
+
+      if (map) {
+        activeTileLayer.addTo(map);
+      }
+    }
 
     function sendToApp(type, payload) {
       var msg = JSON.stringify({ type: type, payload: payload });
@@ -408,22 +484,13 @@ const buildLeafletHtml = (
       var initialZoom = currentRadius ? Math.max(10, 16 - Math.round(Math.log2(currentRadius))) : 13;
       map = L.map('map', {
         zoomControl: true,
-        attributionControl: false,
+        attributionControl: true,
         maxZoom: 19,
         minZoom: 3
       }).setView([currentCenter.latitude, currentCenter.longitude], initialZoom);
 
-      // Primary CartoDB Voyager tiles (smooth, beautiful, free)
-      var voyagerLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19
-      });
-
-      voyagerLayer.on('tileerror', function() {
-        console.warn('CartoDB tile load error, attempting OSM fallback');
-      });
-
-      voyagerLayer.addTo(map);
+      // Apply initial OpenStreetMap layer
+      applyTileLayer(currentTileType);
 
       map.addLayer(circleLayer);
       map.addLayer(userLayer);
@@ -457,6 +524,9 @@ const buildLeafletHtml = (
       if (payload.userLocation !== undefined) {
         currentUserLoc = payload.userLocation;
       }
+      if (payload.tileType && payload.tileType !== currentTileType) {
+        applyTileLayer(payload.tileType);
+      }
       if (payload.mode !== undefined) {
         currentMode = payload.mode;
         if (currentMode === 'picker') {
@@ -476,6 +546,11 @@ const buildLeafletHtml = (
     window.centerOnCoords = function(lat, lng, zoom) {
       if (!map) return;
       map.flyTo([lat, lng], zoom || 14, { duration: 0.8 });
+    };
+
+    window.setTileLayer = function(type) {
+      if (!map) return;
+      applyTileLayer(type);
     };
 
     function safeInit() {
@@ -510,6 +585,7 @@ const buildLeafletHtml = (
 export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
   center,
   radius = 5,
+  tileType = 'osm-standard',
   markers = [],
   userLocation = null,
   showsUserLocation = true,
@@ -538,6 +614,10 @@ export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
     setZoom: (zoom: number) => {
       const script = `window.map && window.map.setZoom(${zoom}); true;`;
       webViewRef.current?.injectJavaScript(script);
+    },
+    setTileType: (type: MapTileType) => {
+      const script = `window.setTileLayer && window.setTileLayer("${type}"); true;`;
+      webViewRef.current?.injectJavaScript(script);
     }
   }));
 
@@ -550,10 +630,11 @@ export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
       markers,
       userLocation: showsUserLocation ? userLocation : null,
       mode,
+      tileType,
     });
     const script = `window.updateMapData && window.updateMapData(${payload}); true;`;
     webViewRef.current?.injectJavaScript(script);
-  }, [center.latitude, center.longitude, radius, markers, userLocation, showsUserLocation, mode, mapReady]);
+  }, [center.latitude, center.longitude, radius, markers, userLocation, showsUserLocation, mode, tileType, mapReady]);
 
   const handleMessage = (event: any) => {
     try {
@@ -581,7 +662,8 @@ export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
     radius,
     markers,
     showsUserLocation ? userLocation : null,
-    mode
+    mode,
+    tileType
   ));
 
   if (Platform.OS === 'web') {
@@ -590,7 +672,7 @@ export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
         <iframe
           srcDoc={initialHtmlRef.current}
           style={{ width: '100%', height: '100%', border: 'none' }}
-          title="Map Discovery"
+          title="OpenStreetMap Discovery"
         />
       </View>
     );
@@ -616,7 +698,7 @@ export const UniversalMap = forwardRef<UniversalMapRef, UniversalMapProps>(({
       {!mapReady && (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Rendering interactive map...</Text>
+          <Text style={styles.loadingText}>Rendering OpenStreetMap...</Text>
         </View>
       )}
     </View>

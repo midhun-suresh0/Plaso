@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, TextInput, ActivityIndicator, Alert, Linking, Platform, Modal } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
-import { UniversalMap, UniversalMapRef, MapMarkerItem } from '../components/UniversalMap';
+import { UniversalMap, UniversalMapRef, MapMarkerItem, MapTileType } from '../components/UniversalMap';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { PlasoScreen } from '../components/PlasoScreen';
@@ -16,6 +16,40 @@ type Props = {
 const CATEGORIES = ['All', 'Businesses', 'Marketplace', 'Posts', 'Food', 'Shopping', 'Services', 'Recommended'];
 const RADII = [1, 3, 5, 10, 25];
 
+const OSM_LAYERS: {
+  id: MapTileType;
+  name: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  badge?: string;
+}[] = [
+  {
+    id: 'osm-standard',
+    name: 'OpenStreetMap Standard',
+    subtitle: 'Classic, highly-detailed community street map',
+    icon: 'map',
+    badge: 'Official',
+  },
+  {
+    id: 'osm-dark',
+    name: 'OpenStreetMap Dark',
+    subtitle: 'Sleek dark theme, high contrast at night',
+    icon: 'moon',
+  },
+  {
+    id: 'osm-hot',
+    name: 'Humanitarian OSM (HOT)',
+    subtitle: 'High contrast with specialized public infrastructure',
+    icon: 'heart',
+  },
+  {
+    id: 'osm-topo',
+    name: 'OpenTopoMap',
+    subtitle: 'Topographic contour lines, hillshading & elevations',
+    icon: 'earth',
+  },
+];
+
 // Default fallback coordinates (Kanjirappally/Kottayam, Kerala where demo data is located)
 const DEFAULT_LATITUDE = 9.528;
 const DEFAULT_LONGITUDE = 76.822;
@@ -28,6 +62,8 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [radius, setRadius] = useState(5); // Default 5km
+  const [tileType, setTileType] = useState<MapTileType>('osm-standard');
+  const [showLayerModal, setShowLayerModal] = useState(false);
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
@@ -314,12 +350,28 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
           style={styles.map}
           center={coords}
           radius={radius}
+          tileType={tileType}
           markers={mapMarkers}
           userLocation={coords}
           showsUserLocation={true}
           onMarkerPress={handleMarkerPress}
           onDirectionsPress={({ latitude, longitude, label }) => getDirections(latitude, longitude, label)}
         />
+
+        {/* OpenStreetMap Floating Badge */}
+        <View style={styles.osmBadge}>
+          <Ionicons name="globe-outline" size={13} color="#10B981" style={{ marginRight: 5 }} />
+          <Text style={styles.osmBadgeText}>OpenStreetMap</Text>
+        </View>
+
+        {/* Map Layer Switcher Button */}
+        <TouchableOpacity 
+          style={styles.layerButton} 
+          onPress={() => setShowLayerModal(true)} 
+          accessibilityLabel="Switch OpenStreetMap Layer"
+        >
+          <Ionicons name="layers" size={22} color={theme.colors.primary} />
+        </TouchableOpacity>
         
         <TouchableOpacity style={styles.myLocationButton} onPress={centerOnUser} accessibilityLabel="Center on my location">
           <Ionicons name="navigate" size={24} color={theme.colors.primary} />
@@ -340,6 +392,86 @@ export default function MapDiscoveryScreen({ navigation }: Props) {
           </View>
         </View>
       </View>
+
+      {/* OpenStreetMap Layers Selector Modal */}
+      <Modal
+        visible={showLayerModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLayerModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLayerModal(false)}
+        >
+          <View style={styles.layerModalCard}>
+            <View style={styles.layerModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="map" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.layerModalTitle}>OpenStreetMap Styles</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowLayerModal(false)} style={styles.layerModalCloseBtn}>
+                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.layerModalSubtitle}>
+              Select an OpenStreetMap tile layer for live navigation
+            </Text>
+
+            <View style={styles.layerOptionsList}>
+              {OSM_LAYERS.map(item => {
+                const isSelected = tileType === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.layerOptionItem, isSelected && styles.layerOptionItemActive]}
+                    onPress={() => {
+                      setTileType(item.id);
+                      if (mapRef.current) {
+                        mapRef.current.setTileType(item.id);
+                      }
+                      setShowLayerModal(false);
+                    }}
+                  >
+                    <View style={[styles.layerIconBox, isSelected && styles.layerIconBoxActive]}>
+                      <Ionicons
+                        name={item.icon}
+                        size={20}
+                        color={isSelected ? '#FFFFFF' : theme.colors.primary}
+                      />
+                    </View>
+                    <View style={styles.layerInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[styles.layerName, isSelected && styles.layerNameActive]}>
+                          {item.name}
+                        </Text>
+                        {item.badge ? (
+                          <View style={styles.layerBadge}>
+                            <Text style={styles.layerBadgeText}>{item.badge}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.layerDesc}>{item.subtitle}</Text>
+                    </View>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
+                    ) : (
+                      <View style={styles.layerUncheckedCircle} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.attributionFooter}>
+              <Text style={styles.attributionText}>
+                &copy; OpenStreetMap contributors &bull; Open Database License (ODbL)
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </PlasoScreen>
   );
 }
@@ -419,6 +551,49 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  osmBadge: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  osmBadgeText: {
+    color: '#F8FAFC',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  layerButton: {
+    position: 'absolute',
+    bottom: 148,
+    right: 20,
+    backgroundColor: theme.colors.surface,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
   myLocationButton: {
     position: 'absolute',
     bottom: 90,
@@ -436,6 +611,121 @@ const styles = StyleSheet.create({
     elevation: 6,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  layerModalCard: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 36 : theme.spacing.lg,
+    borderTopWidth: 1,
+    borderColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  layerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  layerModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  layerModalCloseBtn: {
+    padding: 4,
+  },
+  layerModalSubtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+  },
+  layerOptionsList: {
+    gap: 10,
+  },
+  layerOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.surfaceHighlight,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  layerOptionItemActive: {
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: theme.colors.primary,
+  },
+  layerIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  layerIconBoxActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  layerInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  layerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  layerNameActive: {
+    color: theme.colors.primary,
+  },
+  layerBadge: {
+    marginLeft: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  layerBadgeText: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  layerDesc: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  layerUncheckedCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+  },
+  attributionFooter: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  attributionText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   radiusControl: {
     position: 'absolute',
