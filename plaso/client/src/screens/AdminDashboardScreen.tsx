@@ -78,6 +78,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
       ]);
 
       if (overviewRes.status === 'fulfilled' && overviewRes.value) {
+        if (__DEV__) console.log('[ADMIN DASHBOARD] Overview:', overviewRes.value);
         setOverview(overviewRes.value);
       }
       if (usersRes.status === 'fulfilled') setUserAnalytics(usersRes.value);
@@ -90,6 +91,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       if (overviewRes.status === 'rejected') {
         const errMsg = overviewRes.reason?.response?.data?.message || overviewRes.reason?.message || 'Failed to load dashboard data';
+        if (__DEV__) console.warn('[ADMIN DASHBOARD] Overview error:', overviewRes.reason);
         setError(errMsg);
       }
     } catch (err: any) {
@@ -164,10 +166,21 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
   // ==================== DASHBOARD VIEW ====================
   const renderDashboardView = () => {
-    if (!overview) return null;
+    const data = overview || {
+      totalUsers: 0,
+      activeUsers: 0,
+      totalBusinesses: 0,
+      pendingBusinesses: 0,
+      totalListings: 0,
+      totalOrders: 0,
+      completedOrders: 0,
+      totalRevenue: 0,
+      pendingReports: 0,
+      totalReviews: 0,
+    };
 
-    const activeUserPct = Math.round(((overview.activeUsers || 0) / Math.max(overview.totalUsers || 1, 1)) * 100);
-    const orderCompPct = Math.round(((overview.completedOrders || 0) / Math.max(overview.totalOrders || 1, 1)) * 100);
+    const activeUserPct = Math.round(((data.activeUsers || 0) / Math.max(data.totalUsers || 1, 1)) * 100);
+    const orderCompPct = Math.round(((data.completedOrders || 0) / Math.max(data.totalOrders || 1, 1)) * 100);
 
     return (
       <>
@@ -181,9 +194,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
             >
               <MaterialCommunityIcons name="store-cog" size={26} color={theme.colors.primary} />
               <Text style={styles.actionText}>Businesses</Text>
-              {overview.pendingBusinesses > 0 && (
+              {(data.pendingBusinesses || 0) > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{overview.pendingBusinesses}</Text>
+                  <Text style={styles.badgeText}>{data.pendingBusinesses}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -210,9 +223,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
             >
               <MaterialCommunityIcons name="shield-alert-outline" size={26} color={theme.colors.error} />
               <Text style={styles.actionText}>Reports</Text>
-              {overview.pendingReports > 0 && (
+              {(data.pendingReports || 0) > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{overview.pendingReports}</Text>
+                  <Text style={styles.badgeText}>{data.pendingReports}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -236,14 +249,14 @@ export default function AdminDashboardScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
           <View style={styles.kpiGrid}>
-            {renderKPICard('Total Users', overview.totalUsers || 0, 'account-group', '#4ade80')}
-            {renderKPICard('Active Users', overview.activeUsers || 0, 'account-check', '#22d3ee')}
-            {renderKPICard('Businesses', overview.totalBusinesses || 0, 'storefront', '#f472b6', () => navigation.navigate('AdminBusinesses'))}
-            {renderKPICard('Pending Approval', overview.pendingBusinesses || 0, 'store-clock', '#fbbf24', () => navigation.navigate('AdminBusinesses', { status: 'PENDING' }))}
-            {renderKPICard('Listings', overview.totalListings || 0, 'tag-multiple', '#c084fc', () => navigation.navigate('AdminListings'))}
-            {renderKPICard('Total Orders', overview.totalOrders || 0, 'cart-outline', '#60a5fa', () => navigation.navigate('AdminOrders'))}
-            {renderKPICard('Completed', overview.completedOrders || 0, 'cart-check', '#34d399', () => navigation.navigate('AdminOrders'))}
-            {renderKPICard('Total Revenue', formatCurrency(overview.totalRevenue), 'cash-multiple', '#a3e635')}
+            {renderKPICard('Total Users', data.totalUsers || 0, 'account-group', '#4ade80')}
+            {renderKPICard('Active Users', data.activeUsers || 0, 'account-check', '#22d3ee')}
+            {renderKPICard('Businesses', data.totalBusinesses || 0, 'storefront', '#f472b6', () => navigation.navigate('AdminBusinesses'))}
+            {renderKPICard('Pending Approval', data.pendingBusinesses || 0, 'store-clock', '#fbbf24', () => navigation.navigate('AdminBusinesses', { status: 'PENDING' }))}
+            {renderKPICard('Listings', data.totalListings || 0, 'tag-multiple', '#c084fc', () => navigation.navigate('AdminListings'))}
+            {renderKPICard('Total Orders', data.totalOrders || 0, 'cart-outline', '#60a5fa', () => navigation.navigate('AdminOrders'))}
+            {renderKPICard('Completed', data.completedOrders || 0, 'cart-check', '#34d399', () => navigation.navigate('AdminOrders'))}
+            {renderKPICard('Total Revenue', formatCurrency(data.totalRevenue), 'cash-multiple', '#a3e635')}
           </View>
         </View>
 
@@ -263,7 +276,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
               </View>
               <View style={styles.healthDivider} />
               <View style={styles.healthItem}>
-                <Text style={styles.healthValue}>{overview.totalReviews || 0}</Text>
+                <Text style={styles.healthValue}>{data.totalReviews || 0}</Text>
                 <Text style={styles.healthLabel}>Verified Reviews</Text>
               </View>
             </View>
