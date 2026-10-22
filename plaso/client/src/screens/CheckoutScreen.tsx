@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, SafeAreaView, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,12 +15,13 @@ import { Cart } from '../types/order';
 import { ListingType } from '../types/marketplace';
 import { loadRazorpayScript } from '../utils/razorpayWeb';
 import { RootStackParamList } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-
 export default function CheckoutScreen() {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
+  const { user } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -32,12 +33,45 @@ export default function CheckoutScreen() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
 
+  const handleShouldStartLoad = (request: any): boolean => {
+    const url = request?.url;
+    if (!url) return true;
+
+    // Intercept native UPI and custom payment application schemes (e.g. upi://, gpay://, phonepe://, paytmmp://, intent://)
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('about:') && !url.startsWith('data:')) {
+      Linking.canOpenURL(url).then(supported => {
+        if (supported) {
+          Linking.openURL(url);
+        } else if (url.startsWith('intent://')) {
+          const schemeMatch = url.match(/scheme=([^;]+)/);
+          if (schemeMatch && schemeMatch[1]) {
+            const fallbackScheme = schemeMatch[1] + '://' + url.replace(/^intent:\/\//, '').split('#')[0];
+            Linking.openURL(fallbackScheme).catch(() => {});
+          }
+        }
+      }).catch(err => {
+        console.warn('Cannot open external payment application', err);
+      });
+      return false; // Stop WebView from attempting to load the deep link internally
+    }
+    return true;
+  };
+
   const handlePaymentMessage = async (event: any) => {
     try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      setPaymentHtml(null);
+      if (!event?.nativeEvent?.data) return;
+      let msg: any;
+      try {
+        msg = JSON.parse(event.nativeEvent.data);
+      } catch (parseErr) {
+        // Ignore non-JSON postMessages from third-party iframes
+        return;
+      }
 
       if (msg.type === 'SUCCESS') {
+        setPaymentHtml(null);
+        setSubmitting(true);
+
         const verifyResponse = await paymentApi.verifyPayment({
           orderId: activeOrder?._id,
           razorpayOrderId: msg.data.razorpay_order_id,
@@ -53,12 +87,18 @@ export default function CheckoutScreen() {
           ]);
         }
       } else if (msg.type === 'FAILED') {
-        Alert.alert('Payment Failed', msg.error?.description || 'Your payment failed. You can retry from your orders.', [
+        setPaymentHtml(null);
+        Alert.alert('Payment Failed', msg.data?.description || msg.error?.description || 'Your payment failed. You can retry from your orders.', [
           { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: activeOrder?._id }) }
         ]);
+      } else if (msg.type === 'DISMISSED') {
+        setPaymentHtml(null);
+        setSubmitting(false);
       }
     } catch (e: any) {
+      console.error('Payment verification error', e);
       setPaymentHtml(null);
+      Alert.alert('Error', e.message || 'Payment processing error');
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +245,9 @@ export default function CheckoutScreen() {
           description: 'Order Payment',
           order_id: razorpayOrderId,
           prefill: {
-            name: 'Plaso User',
+            name: user?.name || 'Plaso User',
+            email: user?.email || 'customer@plaso.app',
+            contact: (user as any)?.phone || (user as any)?.phoneNumber || '',
           },
           theme: {
             color: theme.colors.primary,
@@ -216,32 +258,167 @@ export default function CheckoutScreen() {
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <title>Plaso Secure Checkout</title>
   <style>
-    body { background-color: #f7f9fa; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .loading { font-size: 16px; color: #555; text-align: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      max-width: 280px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .action-btn {
+      background: #3b82f6;
+      color: #ffffff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+      margin-bottom: 12px;
+    }
+    .sim-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: none;
+    }
+    .error-msg {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <div class="loading">Opening Secure Payment Gateway...</div>
+  <div class="spinner" id="spinner"></div>
+  <div class="title" id="title">Opening Secure Gateway...</div>
+  <div class="subtitle" id="subtitle">Connecting to Razorpay for secure end-to-end payment.</div>
+  
+  <button class="action-btn" id="openBtn" onclick="triggerCheckout()">Launch Payment Window</button>
+  <button class="sim-btn" id="simBtn" onclick="triggerSimulatedPayment()">Complete Test Payment (Dev)</button>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
     var options = ${JSON.stringify(mobileOptions)};
-    options.handler = function (response) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SUCCESS', data: response }));
-    };
-    options.modal = {
-      ondismiss: function () {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'DISMISSED' }));
+    var rzpInstance = null;
+    var opened = false;
+
+    function sendMessage(type, payload) {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, data: payload }));
       }
+    }
+
+    options.handler = function(response) {
+      document.getElementById('title').innerText = 'Payment Successful!';
+      document.getElementById('subtitle').innerText = 'Verifying signature with Plaso server...';
+      sendMessage('SUCCESS', response);
     };
-    var rzp = new Razorpay(options);
-    rzp.on('payment.failed', function (response) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FAILED', error: response.error }));
-    });
-    setTimeout(function () {
-      rzp.open();
-    }, 400);
+
+    options.modal = {
+      ondismiss: function() {
+        sendMessage('DISMISSED', {});
+      },
+      escape: true,
+      backdropclose: false
+    };
+
+    function triggerCheckout() {
+      if (typeof Razorpay === 'undefined') {
+        document.getElementById('errorMsg').style.display = 'block';
+        document.getElementById('errorMsg').innerText = 'Razorpay checkout script not loaded. Check network connection.';
+        return;
+      }
+      try {
+        if (!rzpInstance) {
+          rzpInstance = new Razorpay(options);
+          rzpInstance.on('payment.failed', function(response) {
+            sendMessage('FAILED', response.error || { description: 'Payment Failed' });
+          });
+        }
+        rzpInstance.open();
+        opened = true;
+      } catch (err) {
+        document.getElementById('errorMsg').style.display = 'block';
+        document.getElementById('errorMsg').innerText = 'Could not open gateway: ' + (err.message || err);
+      }
+    }
+
+    function triggerSimulatedPayment() {
+      sendMessage('SUCCESS', {
+        razorpay_order_id: options.order_id,
+        razorpay_payment_id: 'pay_sim_' + Date.now(),
+        razorpay_signature: 'simulated_success'
+      });
+    }
+
+    function init() {
+      var attempts = 0;
+      var interval = setInterval(function() {
+        attempts++;
+        if (typeof Razorpay !== 'undefined') {
+          clearInterval(interval);
+          triggerCheckout();
+          setTimeout(function() {
+            document.getElementById('openBtn').style.display = 'inline-block';
+            document.getElementById('simBtn').style.display = 'inline-block';
+          }, 3500);
+        } else if (attempts >= 40) {
+          clearInterval(interval);
+          document.getElementById('title').innerText = 'Connection Notice';
+          document.getElementById('subtitle').innerText = 'Could not automatically load payment gateway.';
+          document.getElementById('openBtn').style.display = 'inline-block';
+          document.getElementById('simBtn').style.display = 'inline-block';
+        }
+      }, 100);
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      init();
+    } else {
+      window.addEventListener('DOMContentLoaded', init);
+    }
   </script>
 </body>
 </html>
@@ -366,9 +543,12 @@ export default function CheckoutScreen() {
             setSubmitting(false);
           }}
         >
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#eee' }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.text }}>Complete Payment</Text>
+          <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderColor: theme.colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="shield-checkmark" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.text }}>Razorpay Secure Checkout</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => {
                   setPaymentHtml(null);
@@ -376,15 +556,29 @@ export default function CheckoutScreen() {
                 }}
                 style={{ padding: 4 }}
               >
-                <Ionicons name="close" size={26} color={theme.colors.text} />
+                <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <WebView
               originWhitelist={['*']}
-              source={{ html: paymentHtml }}
+              source={{ 
+                html: paymentHtml,
+                baseUrl: 'https://api.razorpay.com',
+              }}
               onMessage={handlePaymentMessage}
               javaScriptEnabled={true}
               domStorageEnabled={true}
+              thirdPartyCookiesEnabled={true}
+              mixedContentMode="always"
+              allowFileAccess={true}
+              scalesPageToFit={true}
+              userAgent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+              onNavigationStateChange={(navState) => {
+                if (Platform.OS === 'android') {
+                  handleShouldStartLoad(navState);
+                }
+              }}
               style={{ flex: 1 }}
             />
           </SafeAreaView>
