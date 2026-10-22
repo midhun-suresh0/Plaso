@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoButton } from '../components/PlasoButton';
 import { PlasoInput } from '../components/PlasoInput';
 import { theme } from '../constants/theme';
 import { cartApi } from '../services/api/cartApi';
 import { orderApi } from '../services/api/orderApi';
-let RazorpayCheckout: any = null;
-try {
-  RazorpayCheckout = require('react-native-razorpay').default || require('react-native-razorpay');
-} catch (e) {
-  console.warn('RazorpayCheckout could not be loaded:', e);
-}
-
 import { paymentApi } from '../services/api/paymentApi';
 import { Cart } from '../types/order';
 import { ListingType } from '../types/marketplace';
@@ -24,16 +18,52 @@ import { RootStackParamList } from '../types';
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+
 export default function CheckoutScreen() {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentHtml, setPaymentHtml] = useState<string | null>(null);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
 
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+
+  const handlePaymentMessage = async (event: any) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      setPaymentHtml(null);
+
+      if (msg.type === 'SUCCESS') {
+        const verifyResponse = await paymentApi.verifyPayment({
+          orderId: activeOrder?._id,
+          razorpayOrderId: msg.data.razorpay_order_id,
+          razorpayPaymentId: msg.data.razorpay_payment_id,
+          signature: msg.data.razorpay_signature,
+        });
+
+        if (verifyResponse.success) {
+          navigation.navigate('OrderSuccess' as any, { orderId: activeOrder?._id });
+        } else {
+          Alert.alert('Payment Verification Failed', 'We could not verify your payment. Please contact support.', [
+            { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: activeOrder?._id }) }
+          ]);
+        }
+      } else if (msg.type === 'FAILED') {
+        Alert.alert('Payment Failed', msg.error?.description || 'Your payment failed. You can retry from your orders.', [
+          { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: activeOrder?._id }) }
+        ]);
+      }
+    } catch (e: any) {
+      setPaymentHtml(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -167,80 +197,59 @@ export default function CheckoutScreen() {
         paymentObject.open();
 
       } else {
-        if (!RazorpayCheckout || !RazorpayCheckout.open) {
-          if (__DEV__) {
-             try {
-                const verifyResponse = await paymentApi.verifyPayment({
-                  orderId: order._id,
-                  razorpayOrderId: razorpayOrderId,
-                  razorpayPaymentId: 'simulated_payment_id',
-                  signature: 'simulated_success',
-                });
-                if (verifyResponse && verifyResponse.success) {
-                  navigation.navigate('OrderSuccess' as any, { orderId: order._id });
-                  setSubmitting(false);
-                  return;
-                }
-             } catch (err) {}
-             setSubmitting(false);
-             return;
-          } else {
-             Alert.alert('Error', 'Payment module not initialized.');
-             setSubmitting(false);
-             return;
-          }
-        }
-        RazorpayCheckout.open(options).then(async (data: any) => {
-          // 4. Verify Payment on Success
-          try {
-            const verifyResponse = await paymentApi.verifyPayment({
-              orderId: order._id,
-              razorpayOrderId: data.razorpay_order_id,
-              razorpayPaymentId: data.razorpay_payment_id,
-              signature: data.razorpay_signature,
-            });
+        const mobileOptions = {
+          key: keyId,
+          amount: amount,
+          currency: 'INR',
+          name: 'Plaso',
+          description: 'Order Payment',
+          order_id: razorpayOrderId,
+          prefill: {
+            name: 'Plaso User',
+          },
+          theme: {
+            color: theme.colors.primary,
+          },
+        };
 
-            if (verifyResponse.success) {
-              navigation.navigate('OrderSuccess' as any, { orderId: order._id });
-            } else {
-               Alert.alert('Payment Verification Failed', 'We could not verify your payment. Please contact support.', [
-                { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-              ]);
-            }
-          } catch (verifyError: any) {
-             Alert.alert('Verification Error', verifyError.message || 'Could not verify payment', [
-                { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-              ]);
-          } finally {
-              setSubmitting(false);
-          }
-        }).catch(async (error: any) => {
-          if (__DEV__) {
-            try {
-              const verifyResponse = await paymentApi.verifyPayment({
-                orderId: order._id,
-                razorpayOrderId: razorpayOrderId,
-                razorpayPaymentId: 'simulated_payment_id',
-                signature: 'simulated_success',
-              });
-              
-              // paymentApi returns { success: true, data: ... }
-              if (verifyResponse && verifyResponse.success) {
-                navigation.navigate('OrderSuccess' as any, { orderId: order._id });
-                setSubmitting(false);
-                return;
-              }
-            } catch (err) {
-              console.error('Simulation error', err);
-            }
-          }
-          
-          // Payment failed or cancelled
-          Alert.alert('Payment Failed', 'Your payment was cancelled or failed. You can retry from your orders.', [
-              { text: 'View Order', onPress: () => navigation.navigate('OrderDetails' as any, { orderId: order._id }) }
-          ]);
-          setSubmitting(false);
-        });
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body { background-color: #f7f9fa; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .loading { font-size: 16px; color: #555; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="loading">Opening Secure Payment Gateway...</div>
+  <script>
+    var options = ${JSON.stringify(mobileOptions)};
+    options.handler = function (response) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SUCCESS', data: response }));
+    };
+    options.modal = {
+      ondismiss: function () {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'DISMISSED' }));
+      }
+    };
+    var rzp = new Razorpay(options);
+    rzp.on('payment.failed', function (response) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FAILED', error: response.error }));
+    });
+    setTimeout(function () {
+      rzp.open();
+    }, 400);
+  </script>
+</body>
+</html>
+        `;
+
+        setActiveOrder(order);
+        setPaymentHtml(html);
+        setSubmitting(false);
       }
 
     } catch (error: any) {
@@ -347,6 +356,40 @@ export default function CheckoutScreen() {
           loading={submitting}
         />
       </View>
+
+      {paymentHtml && (
+        <Modal
+          visible={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setPaymentHtml(null);
+            setSubmitting(false);
+          }}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#eee' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.text }}>Complete Payment</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setPaymentHtml(null);
+                  setSubmitting(false);
+                }}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={26} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: paymentHtml }}
+              onMessage={handlePaymentMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              style={{ flex: 1 }}
+            />
+          </SafeAreaView>
+        </Modal>
+      )}
     </PlasoScreen>
   );
 }
