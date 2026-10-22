@@ -13,6 +13,7 @@ import { marketplaceApi } from '../services/marketplaceApi';
 import { ListingType, PriceType, AvailabilityStatus, UpdateListingPayload } from '../types/marketplace';
 import { MARKETPLACE_CATEGORIES } from '../constants/marketplaceCategories';
 import { getImageUrl } from '../utils';
+import { appendFileToFormData } from '../utils/formDataHelper';
 
 type RouteProps = RouteProp<RootStackParamList, 'EditListing'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -108,22 +109,7 @@ export default function EditListingScreen({ navigation }: { navigation: Navigati
             formData.append('existingImages', uri);
           } else {
             // New local file
-            const filename = uri.split('/').pop() || `image_${index}.jpg`;
-            const match = /\.(\w+)$/.exec(filename);
-            const ext = match ? match[1] : 'jpg';
-            const fileType = `image/${ext}`;
-            
-            if (Platform.OS === 'web') {
-              const response = await fetch(uri);
-              const blob = await response.blob();
-              formData.append('images', blob, filename);
-            } else {
-              formData.append('images', {
-                uri,
-                name: filename,
-                type: fileType,
-              } as any);
-            }
+            await appendFileToFormData(formData, 'images', uri);
           }
         }
         

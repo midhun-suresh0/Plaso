@@ -23,6 +23,7 @@ import { PlasoButton } from '../components/PlasoButton';
 import { PlasoAvatar } from '../components/PlasoAvatar';
 import { PlasoChip } from '../components/PlasoChip';
 import { Ionicons } from '@expo/vector-icons';
+import { appendFileToFormData } from '../utils/formDataHelper';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, 'EditProfile'>;
@@ -181,24 +182,10 @@ export default function EditProfileScreen({ navigation }: Props) {
       });
 
       if (profileImage && !profileImage.startsWith('http')) {
-        const filename = profileImage.split('/').pop() || 'profile.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
-        
-        if (Platform.OS === 'web') {
-          if (profileImageFile) {
-            formData.append('profileImage', profileImageFile);
-          } else {
-            const response = await fetch(profileImage);
-            const blob = await response.blob();
-            formData.append('profileImage', blob, filename);
-          }
+        if (Platform.OS === 'web' && profileImageFile) {
+          formData.append('profileImage', profileImageFile);
         } else {
-          formData.append('profileImage', {
-            uri: profileImage,
-            name: filename,
-            type,
-          } as any);
+          await appendFileToFormData(formData, 'profileImage', profileImage);
         }
       }
 

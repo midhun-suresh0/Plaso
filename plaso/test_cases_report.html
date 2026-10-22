@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plaso - Test Case Report (Signup, Login, Checkout, Edit Profile)</title>
+<style>
+    body {
+        font-family: "Times New Roman", serif;
+        font-size: 13px;
+        color: #000;
+        margin: 25px;
+    }
+    h2 {
+        font-size: 17px;
+        margin: 26px 0 8px;
+        page-break-after: avoid;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        margin-bottom: 24px;
+        page-break-inside: auto;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 5px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+    tr {
+        page-break-inside: avoid;
+    }
+    .report-title { font-weight: bold; text-align: left; }
+    .project { font-weight: bold; text-align: left; }
+    .subtitle { font-weight: bold; text-align: center; }
+    .meta { font-weight: bold; }
+    .section-heading { font-weight: bold; text-align: left; }
+    .steps th { font-weight: bold; text-align: left; }
+    .postcondition { font-weight: bold; }
+    @media print {
+        body { margin: 12mm; }
+        h2 { page-break-before: auto; }
+    }
+</style>
+</head>
+<body>
+
+<h2>Test Case 1</h2>
+<table>
+    <colgroup>
+        <col style="width: 10%">
+        <col style="width: 20%">
+        <col style="width: 17%">
+        <col style="width: 22%">
+        <col style="width: 20%">
+        <col style="width: 11%">
+    </colgroup>
+    <tr><td colspan="6" class="report-title">Test Case 1</td></tr>
+    <tr><td colspan="6" class="project">Project Name: Plaso — Hyperlocal Social Commerce &amp; Community Discovery Platform</td></tr>
+    <tr><td colspan="6" class="subtitle">User Registration &amp; Account Onboarding Test Case</td></tr>
+    <tr>
+        <td colspan="3" class="meta">Test Case ID: TC_PLASO_01</td>
+        <td colspan="3" class="meta">Test Designed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Priority (Low/Medium/High): High</td>
+        <td colspan="3" class="meta">Test Designed Date: 22/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Module Name: User Authentication &amp; Registration</td>
+        <td colspan="3" class="meta">Test Executed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Title: Verify New User Account Creation with Input Validation, Password Encryption, and JWT Generation</td>
+        <td colspan="3" class="meta">Test Execution Date: 23/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3"><b>Description:</b> Verify that a new user can successfully register an account on Plaso by providing valid full name, email, password, and account role; the backend validates input format, hashes password via bcrypt, creates the user record in MongoDB, and returns an authenticated JWT session token.</td>
+        <td colspan="3"><b>Pre-Condition:</b> Plaso backend server is active; MongoDB Atlas database is connected; user is on the Registration screen.</td>
+    </tr>
+    <tr class="steps">
+        <th>Step</th><th>Test Step</th><th>Test Data</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+    </tr>
+    <tr><td>1</td><td>Navigate to Register screen</td><td>Screen: RegisterScreen</td><td>Display Plaso account registration form with Name, Email, Password, and Role fields.</td><td>Registration form displayed correctly.</td><td>Pass</td></tr>
+    <tr><td>2</td><td>Enter user full name</td><td>Name: "Midhun Suresh"</td><td>Input accepted and validated in the name field.</td><td>Name entered successfully.</td><td>Pass</td></tr>
+    <tr><td>3</td><td>Enter valid email address</td><td>Email: "midhun.dev@plaso.app"</td><td>Email format validated; duplicate check passed.</td><td>Email accepted.</td><td>Pass</td></tr>
+    <tr><td>4</td><td>Enter secure password</td><td>Password: "PlasoSecure@2026"</td><td>Password field masks input and satisfies minimum length/complexity rules.</td><td>Password input accepted and masked.</td><td>Pass</td></tr>
+    <tr><td>5</td><td>Select account role</td><td>Role: "USER" (Consumer)</td><td>User role radio/selector highlights chosen role.</td><td>Role selected.</td><td>Pass</td></tr>
+    <tr><td>6</td><td>Click "Sign Up" button</td><td>Action: POST /api/auth/register</td><td>User record saved to MongoDB with bcrypt hash; JWT token issued; user redirected to Home screen.</td><td>User created and successfully redirected.</td><td>Pass</td></tr>
+    <tr><td colspan="6" class="postcondition">Post-Condition: New user document created in MongoDB; JWT authentication token securely persisted to SecureStore / LocalStorage; user session initialized.</td></tr>
+</table>
+
+<h2>Test Case 2</h2>
+<table>
+    <colgroup>
+        <col style="width: 10%">
+        <col style="width: 20%">
+        <col style="width: 17%">
+        <col style="width: 22%">
+        <col style="width: 20%">
+        <col style="width: 11%">
+    </colgroup>
+    <tr><td colspan="6" class="report-title">Test Case 2</td></tr>
+    <tr><td colspan="6" class="project">Project Name: Plaso — Hyperlocal Social Commerce &amp; Community Discovery Platform</td></tr>
+    <tr><td colspan="6" class="subtitle">User Login &amp; Session Authentication Test Case</td></tr>
+    <tr>
+        <td colspan="3" class="meta">Test Case ID: TC_PLASO_02</td>
+        <td colspan="3" class="meta">Test Designed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Priority (Low/Medium/High): High</td>
+        <td colspan="3" class="meta">Test Designed Date: 22/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Module Name: User Authentication &amp; Session Management</td>
+        <td colspan="3" class="meta">Test Executed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Title: Verify User Login with Registered Credentials, JWT Issuance, and Feed Routing</td>
+        <td colspan="3" class="meta">Test Execution Date: 23/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta"><b>Description:</b> Verify that an existing registered user can sign in with valid email and password credentials, receive a signed JSON Web Token (JWT), establish an authenticated session, and be routed to the primary Home discovery feed.</td>
+        <td colspan="3"><b>Pre-Condition:</b> User account exists and is active in MongoDB Atlas; Plaso API server is running.</td>
+    </tr>
+    <tr class="steps">
+        <th>Step</th><th>Test Step</th><th>Test Data</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+    </tr>
+    <tr><td>1</td><td>Open Plaso application and navigate to Login</td><td>Screen: LoginScreen</td><td>Display Plaso sign-in interface with email, password inputs and login action buttons.</td><td>Login interface rendered.</td><td>Pass</td></tr>
+    <tr><td>2</td><td>Enter registered email address</td><td>Email: "midhun.dev@plaso.app"</td><td>Email string accepted into the input text field.</td><td>Email accepted.</td><td>Pass</td></tr>
+    <tr><td>3</td><td>Enter registered account password</td><td>Password: "PlasoSecure@2026"</td><td>Password entered securely in masked characters.</td><td>Password masked and accepted.</td><td>Pass</td></tr>
+    <tr><td>4</td><td>Click "Sign In" button</td><td>Action: POST /api/auth/login</td><td>Backend validates bcrypt hash; returns HTTP 200 with JWT token and serialized User payload.</td><td>HTTP 200 received with token.</td><td>Pass</td></tr>
+    <tr><td>5</td><td>Verify session storage and routing</td><td>Token Key: plaso_auth_token</td><td>Token stored in SecureStore/LocalStorage; App navigates to HomeScreen discovery dashboard.</td><td>Token stored; routed to Home.</td><td>Pass</td></tr>
+    <tr><td colspan="6" class="postcondition">Post-Condition: JWT authentication token stored in device SecureStore; global AuthContext updated with authenticated user state; Socket.io client connected.</td></tr>
+</table>
+
+<h2>Test Case 3</h2>
+<table>
+    <colgroup>
+        <col style="width: 10%">
+        <col style="width: 20%">
+        <col style="width: 17%">
+        <col style="width: 22%">
+        <col style="width: 20%">
+        <col style="width: 11%">
+    </colgroup>
+    <tr><td colspan="6" class="report-title">Test Case 3</td></tr>
+    <tr><td colspan="6" class="project">Project Name: Plaso — Hyperlocal Social Commerce &amp; Community Discovery Platform</td></tr>
+    <tr><td colspan="6" class="subtitle">Marketplace Checkout &amp; Razorpay Payment Gateway Test Case</td></tr>
+    <tr>
+        <td colspan="3" class="meta">Test Case ID: TC_PLASO_03</td>
+        <td colspan="3" class="meta">Test Designed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Priority (Low/Medium/High): High</td>
+        <td colspan="3" class="meta">Test Designed Date: 22/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Module Name: Order Checkout &amp; Razorpay Payment Processing</td>
+        <td colspan="3" class="meta">Test Executed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Title: Verify End-to-End Cart Checkout, Order Generation, Razorpay Gateway Launch, and Payment Signature Verification</td>
+        <td colspan="3" class="meta">Test Execution Date: 23/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3"><b>Description:</b> Verify that an authenticated buyer can proceed from cart to checkout, supply delivery address details, generate an order, launch Razorpay secure payment gateway, complete test payment, verify cryptographic HMAC-SHA256 signature, and navigate to Order Success confirmation.</td>
+        <td colspan="3"><b>Pre-Condition:</b> User is logged in; cart contains at least one active marketplace listing item; Razorpay test keys configured on server.</td>
+    </tr>
+    <tr class="steps">
+        <th>Step</th><th>Test Step</th><th>Test Data</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+    </tr>
+    <tr><td>1</td><td>Navigate to Cart and click "Proceed to Checkout"</td><td>Route: /checkout</td><td>Checkout screen loads showing order item summary, subtotal, and delivery address inputs.</td><td>Checkout screen displayed.</td><td>Pass</td></tr>
+    <tr><td>2</td><td>Enter physical delivery address</td><td>Address: "Door 4B, Hillview Heights, Kanjirappally, Kerala 686507"</td><td>Delivery address accepted and validated.</td><td>Address entered.</td><td>Pass</td></tr>
+    <tr><td>3</td><td>Click "Pay Now" button</td><td>Action: Create Plaso Order &amp; Razorpay Order</td><td>Plaso Order created (PENDING); Razorpay order generated with amount in paise; payment modal initializes.</td><td>Order created; payment modal opened.</td><td>Pass</td></tr>
+    <tr><td>4</td><td>Verify Razorpay checkout gateway modal</td><td>Gateway: Razorpay Checkout.js (WebView)</td><td>Razorpay gateway opens with customer prefill details (Name, Email, Phone); Card/UPI options displayed.</td><td>Razorpay gateway rendered with options.</td><td>Pass</td></tr>
+    <tr><td>5</td><td>Execute test payment transaction</td><td>Card: 4111 1111 1111 1111, OTP: 123456</td><td>Payment completes successfully; Razorpay client sends success callback with payment ID and signature.</td><td>Success callback received.</td><td>Pass</td></tr>
+    <tr><td>6</td><td>Verify payment signature on server</td><td>Action: POST /api/payments/verify</td><td>Server validates HMAC-SHA256 signature; order payment status updated to PAID; redirects to OrderSuccess.</td><td>Signature verified; order status set to PAID.</td><td>Pass</td></tr>
+    <tr><td colspan="6" class="postcondition">Post-Condition: Order paymentStatus updated from PENDING to PAID in MongoDB; Transaction record saved; Cart emptied; User navigated to OrderSuccess screen with invoice details.</td></tr>
+</table>
+
+<h2>Test Case 4</h2>
+<table>
+    <colgroup>
+        <col style="width: 10%">
+        <col style="width: 20%">
+        <col style="width: 17%">
+        <col style="width: 22%">
+        <col style="width: 20%">
+        <col style="width: 11%">
+    </colgroup>
+    <tr><td colspan="6" class="report-title">Test Case 4</td></tr>
+    <tr><td colspan="6" class="project">Project Name: Plaso — Hyperlocal Social Commerce &amp; Community Discovery Platform</td></tr>
+    <tr><td colspan="6" class="subtitle">User Profile Customization &amp; Avatar Upload Test Case</td></tr>
+    <tr>
+        <td colspan="3" class="meta">Test Case ID: TC_PLASO_04</td>
+        <td colspan="3" class="meta">Test Designed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Priority (Low/Medium/High): Medium</td>
+        <td colspan="3" class="meta">Test Designed Date: 22/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Module Name: User Profile Management &amp; Personalization</td>
+        <td colspan="3" class="meta">Test Executed By: Midhun Suresh</td>
+    </tr>
+    <tr>
+        <td colspan="3" class="meta">Test Title: Verify Profile Information Modification, Avatar Image Upload via Media Library, and Persistent Synchronization</td>
+        <td colspan="3" class="meta">Test Execution Date: 23/10/2026</td>
+    </tr>
+    <tr>
+        <td colspan="3"><b>Description:</b> Verify that an authenticated user can access profile editing, modify display name and bio, select an avatar photo from device storage, upload the image via multipart FormData, and persist changes across app screens and backend database.</td>
+        <td colspan="3"><b>Pre-Condition:</b> User is authenticated and viewing their Profile screen; device media library permission granted.</td>
+    </tr>
+    <tr class="steps">
+        <th>Step</th><th>Test Step</th><th>Test Data</th><th>Expected Result</th><th>Actual Result</th><th>Status (Pass/Fail)</th>
+    </tr>
+    <tr><td>1</td><td>Navigate to Profile and click "Edit Profile"</td><td>Route: EditProfileScreen</td><td>Edit Profile screen loads with prefilled user information (Name, Bio, Username, Location Privacy).</td><td>Edit Profile screen rendered with current data.</td><td>Pass</td></tr>
+    <tr><td>2</td><td>Modify Name and Bio inputs</td><td>Name: "Midhun Suresh", Bio: "Full-stack developer exploring hyperlocal commerce."</td><td>New text strings accepted in respective form inputs.</td><td>Text inputs updated.</td><td>Pass</td></tr>
+    <tr><td>3</td><td>Tap avatar edit camera icon</td><td>Action: ImagePicker.launchImageLibraryAsync</td><td>Native device photo gallery opens allowing image selection.</td><td>Media library opened.</td><td>Pass</td></tr>
+    <tr><td>4</td><td>Select avatar photo from gallery</td><td>Image file: avatar_profile.jpg</td><td>Image selected; temporary preview displayed in avatar circle.</td><td>Image preview displayed.</td><td>Pass</td></tr>
+    <tr><td>5</td><td>Update Location Privacy setting</td><td>Setting: "NEARBY" (Within Discovery Radius)</td><td>Privacy option selected and reflected in form state.</td><td>Option selected.</td><td>Pass</td></tr>
+    <tr><td>6</td><td>Click "Save Profile" button</td><td>Action: PATCH /api/users/profile (multipart/form-data)</td><td>Avatar uploaded to /uploads/profiles; user document updated in MongoDB; success alert displayed; navigates back.</td><td>Profile saved and updated in database.</td><td>Pass</td></tr>
+    <tr><td colspan="6" class="postcondition">Post-Condition: User document updated in MongoDB with new profile details and avatar image URL; local AuthContext user state refreshed; updated avatar and bio rendered across Profile and feeds.</td></tr>
+</table>
+
+</body>
+</html>

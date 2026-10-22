@@ -11,6 +11,7 @@ import { LocationPrivacy, CreatePostRequest } from '../types/post';
 import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoAvatar } from '../components/PlasoAvatar';
 import { PlasoButton } from '../components/PlasoButton';
+import { appendFileToFormData } from '../utils/formDataHelper';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, 'CreatePost'>;
@@ -111,30 +112,11 @@ export default function CreatePostScreen({ navigation }: Props) {
           formData.append('locationName', locationName);
         }
 
-        // Add media file
-        const filename = media.split('/').pop() || 'photo.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
-        
-        if (Platform.OS === 'web') {
-          if (mediaFile) {
-            formData.append('media', mediaFile);
-          } else {
-            try {
-              const response = await fetch(media);
-              const blob = await response.blob();
-              formData.append('media', blob, filename);
-            } catch (e) {
-              console.error('Failed to fetch blob from media URI:', e);
-              throw new Error('Could not process image on Web.');
-            }
-          }
+        // Add media file using cross-platform helper (Expo WinterCG fetch compatible)
+        if (Platform.OS === 'web' && mediaFile) {
+          formData.append('media', mediaFile);
         } else {
-          formData.append('media', {
-            uri: media,
-            name: filename,
-            type,
-          } as any);
+          await appendFileToFormData(formData, 'media', media);
         }
         
         payload = formData;

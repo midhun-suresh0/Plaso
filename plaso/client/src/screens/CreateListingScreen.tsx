@@ -12,6 +12,7 @@ import { PlasoButton } from '../components/PlasoButton';
 import { marketplaceApi } from '../services/marketplaceApi';
 import { ListingType, PriceType, AvailabilityStatus, CreateListingPayload } from '../types/marketplace';
 import { MARKETPLACE_CATEGORIES } from '../constants/marketplaceCategories';
+import { appendFileToFormData } from '../utils/formDataHelper';
 
 type RouteProps = RouteProp<RootStackParamList, 'CreateListing'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -108,26 +109,9 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
           formData.append('unit', unit.trim());
         }
 
-        // Handle images asynchronously to support web blobs and native device formats
+        // Handle images asynchronously using cross-platform helper (Expo WinterCG fetch compatible)
         for (let index = 0; index < images.length; index++) {
-          const uri = images[index];
-          const rawName = uri.split('/').pop() || `image_${index}.jpg`;
-          const match = /\.(\w+)$/.exec(rawName);
-          const ext = (match && match[1]) ? match[1].toLowerCase() : 'jpg';
-          const fileType = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
-          const safeName = rawName.includes('.') ? rawName : `listing_${Date.now()}_${index}.${ext}`;
-          
-          if (Platform.OS === 'web') {
-            const response = await fetch(uri);
-            const blob = await response.blob();
-            formData.append('images', blob, safeName);
-          } else {
-            formData.append('images', {
-              uri,
-              name: safeName,
-              type: fileType,
-            } as any);
-          }
+          await appendFileToFormData(formData, 'images', images[index]);
         }
         
         payload = formData;
@@ -167,7 +151,7 @@ export default function CreateListingScreen({ navigation }: { navigation: Naviga
         }
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Failed to create listing';
+      const errorMsg = error?.message || error?.response?.data?.message || 'Failed to create listing';
       if (Platform.OS === 'web') {
         window.alert(errorMsg);
       } else {
