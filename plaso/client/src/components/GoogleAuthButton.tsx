@@ -10,22 +10,7 @@ let GoogleSignin: any = null;
 let statusCodes: any = {};
 
 const getGoogleSignin = () => {
-  if (GoogleSignin) return GoogleSignin;
-  try {
-    const GoogleSigninModule = require('@react-native-google-signin/google-signin');
-    GoogleSignin = GoogleSigninModule.GoogleSignin;
-    statusCodes = GoogleSigninModule.statusCodes || {};
-    
-    GoogleSignin.configure({
-      webClientId: config.google.webClientId,
-      iosClientId: config.google.iosClientId,
-      offlineAccess: false,
-    });
-    return GoogleSignin;
-  } catch (e) {
-    console.warn('GoogleSignin could not be loaded:', e);
-    return null;
-  }
+  return null;
 };
 
 interface Props {
