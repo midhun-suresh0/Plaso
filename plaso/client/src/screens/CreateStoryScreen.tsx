@@ -5,23 +5,14 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-let Video: any = null;
-let ResizeMode: any = { COVER: 'cover', CONTAIN: 'contain', STRETCH: 'stretch' };
-
-try {
-  const ExpoAV = require('expo-av');
-  Video = ExpoAV.Video;
-  ResizeMode = ExpoAV.ResizeMode;
-} catch (e) {
-  console.warn('expo-av is not available in this environment');
-  Video = React.forwardRef(({ style, ...props }: any, ref: any) => (
-    <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
-      <Text style={{ color: 'white', textAlign: 'center', padding: 20 }}>
-        Video preview requires a custom dev client.
-      </Text>
-    </View>
-  ));
-}
+const ResizeMode: any = { COVER: 'cover', CONTAIN: 'contain', STRETCH: 'stretch' };
+const Video: any = React.forwardRef(({ style, ...props }: any, ref: any) => (
+  <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
+    <Text style={{ color: 'white', textAlign: 'center', padding: 20 }}>
+      Video preview requires a custom dev client.
+    </Text>
+  </View>
+));
 import { theme, colors } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { PlasoButton } from '../components/PlasoButton';
