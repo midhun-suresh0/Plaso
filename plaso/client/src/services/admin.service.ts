@@ -40,6 +40,21 @@ class AdminService {
     const response = await api.get<any>(`/admin/analytics/top?range=${range}`);
     return response.data.data;
   }
+
+  async getReviewAnalytics(range: string = 'all') {
+    const response = await api.get<any>(`/admin/analytics/reviews?range=${range}`);
+    return response.data.data;
+  }
+
+  async getSocialAnalytics(range: string = 'all') {
+    const response = await api.get<any>(`/admin/analytics/social?range=${range}`);
+    return response.data.data;
+  }
+
+  async getIntelligenceAnalytics() {
+    const response = await api.get<any>('/admin/analytics/intelligence');
+    return response.data.data;
+  }
   async getReports(page: number = 1, limit: number = 20, search?: string, status?: string) {
     const params = new URLSearchParams();
     params.append('page', page.toString());

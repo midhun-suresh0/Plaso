@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { PlasoScreen } from '../components/PlasoScreen';
@@ -15,10 +15,17 @@ const STATUS_TABS = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'];
 
 const AdminBusinessesScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<any>();
   
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [activeTab, setActiveTab] = useState(route.params?.status || 'PENDING');
+
+  useEffect(() => {
+    if (route.params?.status) {
+      setActiveTab(route.params.status);
+    }
+  }, [route.params?.status]);
 
   const fetchBusinesses = async () => {
     try {

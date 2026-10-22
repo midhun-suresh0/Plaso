@@ -55,7 +55,7 @@ export type RootStackParamList = {
   BusinessProfile: { businessId: string };
   BusinessDashboard: undefined;
   EditBusiness: { businessId?: string } | undefined;
-  AdminBusinesses: undefined;
+  AdminBusinesses: { status?: string } | undefined;
   AdminBusinessDetails: { businessId: string };
   AdminDashboard: undefined;
   AdminReports: undefined;
