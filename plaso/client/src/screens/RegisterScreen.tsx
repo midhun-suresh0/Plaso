@@ -19,6 +19,7 @@ import { PlasoInput } from '../components/PlasoInput';
 import { PlasoButton } from '../components/PlasoButton';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { LinearGradient } from 'expo-linear-gradient';
+import { validateSignupEmail } from '../utils/emailValidator';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, 'Register'>;
@@ -40,9 +41,9 @@ export default function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailRegex.test(email.trim())) {
-      setError('Please enter a valid email address');
+    const emailValidation = validateSignupEmail(email);
+    if (!emailValidation.isValid) {
+      setError(emailValidation.message || 'Please enter a valid email address');
       return;
     }
 
@@ -63,7 +64,11 @@ export default function RegisterScreen({ navigation }: Props) {
     setError('');
 
     try {
-      const response = await authApi.register({ name: name.trim(), email: email.trim(), password });
+      const response = await authApi.register({ 
+        name: name.trim(), 
+        email: emailValidation.normalizedEmail, 
+        password 
+      });
       
       if (response.success && response.data) {
         await login(response.data.token, response.data.user);

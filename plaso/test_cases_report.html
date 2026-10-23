@@ -85,7 +85,7 @@
     </tr>
     <tr><td>1</td><td>Navigate to Register screen</td><td>Screen: RegisterScreen</td><td>Display Plaso account registration form with Name, Email, Password, and Role fields.</td><td>Registration form displayed correctly.</td><td>Pass</td></tr>
     <tr><td>2</td><td>Enter user full name</td><td>Name: "Midhun Suresh"</td><td>Input accepted and validated in the name field.</td><td>Name entered successfully.</td><td>Pass</td></tr>
-    <tr><td>3</td><td>Enter valid email address</td><td>Email: "midhun.dev@plaso.app"</td><td>Email format validated; duplicate check passed.</td><td>Email accepted.</td><td>Pass</td></tr>
+    <tr><td>3</td><td>Enter valid email address</td><td>Email: "midhun.dev@plaso.app"</td><td>Email validated via RFC syntax, disposable provider blocklist, and DNS MX verification; duplicate check passed.</td><td>Email verified and accepted.</td><td>Pass</td></tr>
     <tr><td>4</td><td>Enter secure password</td><td>Password: "PlasoSecure@2026"</td><td>Password field masks input and satisfies minimum length/complexity rules.</td><td>Password input accepted and masked.</td><td>Pass</td></tr>
     <tr><td>5</td><td>Select account role</td><td>Role: "USER" (Consumer)</td><td>User role radio/selector highlights chosen role.</td><td>Role selected.</td><td>Pass</td></tr>
     <tr><td>6</td><td>Click "Sign Up" button</td><td>Action: POST /api/auth/register</td><td>User record saved to MongoDB with bcrypt hash; JWT token issued; user redirected to Home screen.</td><td>User created and successfully redirected.</td><td>Pass</td></tr>

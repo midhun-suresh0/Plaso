@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { AppError, HttpStatus } from '../types';
 import { emailService } from '../services/email.service';
 import { UserService } from '../services/user.service';
+import { validateEmail, EMAIL_REGEX } from '../utils/emailValidator';
 import env from '../config/env';
 
 const googleClient = new OAuth2Client(env.googleClientId);
@@ -22,11 +23,12 @@ export class AuthController {
         throw new AppError('Name, email, and password are required', HttpStatus.BAD_REQUEST);
       }
 
-      const normalizedEmail = email.toLowerCase().trim();
-      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-      if (!emailRegex.test(normalizedEmail)) {
-        throw new AppError('Please provide a valid email', HttpStatus.BAD_REQUEST);
+      // Comprehensive email validation (syntax, typos, disposable domains, and DNS MX records)
+      const emailValidation = await validateEmail(email, { checkMx: true });
+      if (!emailValidation.isValid) {
+        throw new AppError(emailValidation.message || 'Please provide a valid email', HttpStatus.BAD_REQUEST);
       }
+      const normalizedEmail = emailValidation.normalizedEmail;
 
       if (!AuthService.validatePassword(password)) {
         throw new AppError('Password must be at least 8 characters long and contain uppercase, lowercase, and a number', HttpStatus.BAD_REQUEST);
@@ -81,8 +83,7 @@ export class AuthController {
       }
 
       const normalizedEmail = email.toLowerCase().trim();
-      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-      if (!emailRegex.test(normalizedEmail)) {
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
         throw new AppError('Invalid email or password', HttpStatus.UNAUTHORIZED);
       }
 
@@ -246,8 +247,7 @@ export class AuthController {
       }
 
       const normalizedEmail = email.toLowerCase().trim();
-      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-      if (!emailRegex.test(normalizedEmail)) {
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
         throw new AppError('Please provide a valid email format', HttpStatus.BAD_REQUEST);
       }
 

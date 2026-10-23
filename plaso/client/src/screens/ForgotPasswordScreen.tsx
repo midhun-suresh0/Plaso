@@ -18,6 +18,7 @@ import { PlasoScreen } from '../components/PlasoScreen';
 import { PlasoInput } from '../components/PlasoInput';
 import { PlasoButton } from '../components/PlasoButton';
 import { Ionicons } from '@expo/vector-icons';
+import { EMAIL_REGEX } from '../utils/emailValidator';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, 'ForgotPassword'>;
@@ -34,8 +35,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       return;
     }
 
-    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailRegex.test(email.trim())) {
+    if (!EMAIL_REGEX.test(email.trim())) {
       setError('Please enter a valid email address');
       return;
     }
