@@ -89,7 +89,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const loadSuggestions = async () => {
     try {
-      const res = await discoveryApi.getSuggestedUsers();
+      const res = await discoveryApi.getSuggestedUsers(10);
       if (res.success && res.data) {
         setSuggestions(res.data);
       }
@@ -252,8 +252,18 @@ export default function HomeScreen({ navigation }: Props) {
     if (activeTab !== 'home' || suggestions.length === 0) return null;
     return (
       <View style={styles.suggestionsContainer}>
-        <Text style={styles.suggestionsTitle}>People You May Know</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionsScroll}>
+        <View style={styles.suggestionsHeaderRow}>
+          <Text style={styles.suggestionsTitle}>People You May Know</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+            <Text style={styles.seeAllText}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.suggestionsScroll}
+          nestedScrollEnabled={true}
+        >
           {suggestions.map(s => (
             <UserSuggestionCard 
               key={s._id} 
@@ -459,16 +469,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  suggestionsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
   suggestionsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginLeft: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+  },
+  seeAllText: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   suggestionsScroll: {
-    paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
   },
   businessBanner: {
     backgroundColor: theme.colors.primary,

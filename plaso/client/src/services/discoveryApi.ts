@@ -10,7 +10,7 @@ export interface SuggestedUser {
 }
 
 export const discoveryApi = {
-  getSuggestedUsers: (limit: number = 5): Promise<ApiResponse<SuggestedUser[]>> => {
+  getSuggestedUsers: (limit: number = 10): Promise<ApiResponse<SuggestedUser[]>> => {
     return api.get(`/users/suggestions?limit=${limit}`);
   },
   

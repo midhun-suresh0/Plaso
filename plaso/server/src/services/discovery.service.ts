@@ -4,9 +4,9 @@ import mongoose from 'mongoose';
 
 export class DiscoveryService {
   /**
-   * Get user suggestions based on shared interests or just recent active users
+   * Get user suggestions based on shared interests or recent active users
    */
-  static async getSuggestedUsers(userId: string, limit: number = 5) {
+  static async getSuggestedUsers(userId: string, limit: number = 10) {
     const currentUser = await User.findById(userId).select('interests location');
     if (!currentUser) return [];
 
@@ -14,13 +14,17 @@ export class DiscoveryService {
     const following = await Follow.find({ follower: userId }).select('following').lean();
     const followingIds = following.map(f => f.following.toString());
     
-    // Always exclude current user
+    // Always exclude current user + followed users
     const excludeIds = [userId, ...followingIds];
+    const validExcludeObjectIds = excludeIds
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
 
-    // Simple heuristic: users with overlapping interests, or just active users
+    // Simple heuristic: users with overlapping interests or active users (exclude ADMINs)
     let query: any = {
-      _id: { $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id)) },
-      isActive: true,
+      _id: { $nin: validExcludeObjectIds },
+      isActive: { $ne: false },
+      role: { $ne: 'ADMIN' },
     };
 
     if (currentUser.interests && currentUser.interests.length > 0) {
@@ -28,18 +32,20 @@ export class DiscoveryService {
       query.interests = { $in: currentUser.interests };
       
       let suggestions = await User.find(query)
-        .select('name username profileImage interests')
+        .select('name username profileImage interests createdAt')
+        .sort({ createdAt: -1 })
         .limit(limit)
         .lean();
 
-      // If we don't have enough, fill the rest with random/recent active users
+      // If we don't have enough, fill the rest with other active users
       if (suggestions.length < limit) {
         delete query.interests;
-        const additionalExclude = suggestions.map(s => s._id.toString());
-        query._id.$nin.push(...additionalExclude.map(id => new mongoose.Types.ObjectId(id)));
+        const additionalExclude = suggestions.map(s => s._id);
+        query._id.$nin = [...validExcludeObjectIds, ...additionalExclude];
         
         const moreUsers = await User.find(query)
-          .select('name username profileImage interests')
+          .select('name username profileImage interests createdAt')
+          .sort({ createdAt: -1 })
           .limit(limit - suggestions.length)
           .lean();
           
@@ -48,26 +54,26 @@ export class DiscoveryService {
 
       // Add a sharedInterests count for the frontend to display
       return suggestions.map(s => {
-        const shared = s.interests?.filter(i => currentUser.interests?.includes(i)).length || 0;
+        const shared = s.interests?.filter((i: string) => currentUser.interests?.includes(i)).length || 0;
         return {
           _id: s._id,
-          name: s.name || s.username || 'User',
+          name: s.name || s.username || 'Plaso User',
           username: s.username,
           profileImage: s.profileImage,
           sharedInterests: shared
         };
       });
     } else {
-      // If no interests, just get some recent users
+      // If no interests, just get recent active users
       const suggestions = await User.find(query)
-        .select('name username profileImage')
+        .select('name username profileImage createdAt')
         .sort({ createdAt: -1 })
         .limit(limit)
         .lean();
         
       return suggestions.map(s => ({
         _id: s._id,
-        name: s.name || s.username || 'User',
+        name: s.name || s.username || 'Plaso User',
         username: s.username,
         profileImage: s.profileImage,
         sharedInterests: 0
