@@ -3,10 +3,17 @@ import { BusinessController } from '../controllers/business.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
+import { upload } from '../middleware/upload';
+
 const router = Router();
 
 // Ensure all business routes are authenticated
 router.use(authenticate);
+
+const businessUpload = upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'coverImage', maxCount: 1 }
+]);
 
 // --- Public / Discovery Routes (Any authenticated user) ---
 router.get('/nearby', BusinessController.getNearbyBusinesses);
@@ -17,6 +24,7 @@ router.get('/:id', BusinessController.getBusinessById);
 router.post(
   '/',
   authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
+  businessUpload,
   BusinessController.createBusiness
 );
 router.get(
@@ -27,6 +35,7 @@ router.get(
 router.patch(
   '/owner/me',
   authorize(UserRole.USER, UserRole.BUSINESS_OWNER, UserRole.ADMIN),
+  businessUpload,
   BusinessController.updateMyBusiness
 );
 

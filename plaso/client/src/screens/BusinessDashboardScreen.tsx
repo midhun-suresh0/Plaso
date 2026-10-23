@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -10,6 +10,7 @@ import { theme } from '../constants/theme';
 import { businessApi } from '../services/businessApi';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -126,13 +127,34 @@ const BusinessDashboardScreen = () => {
 
             {/* Header Card */}
             <PlasoCard style={styles.mainCard}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.businessName}>{business.name}</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('BusinessProfile', { businessId: business._id })}>
-                  <MaterialIcons name="visibility" size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
+              {business.coverImage && getImageUrl(business.coverImage) ? (
+                <View style={styles.cardCoverContainer}>
+                  <Image source={{ uri: getImageUrl(business.coverImage) }} style={styles.cardCoverImage} resizeMode="cover" />
+                </View>
+              ) : null}
+
+              <View style={styles.cardContentWrapper}>
+                <View style={styles.cardHeaderWithLogo}>
+                  <View style={styles.dashboardLogoContainer}>
+                    {business.logo && getImageUrl(business.logo) ? (
+                      <Image source={{ uri: getImageUrl(business.logo) }} style={styles.dashboardLogo} />
+                    ) : (
+                      <View style={[styles.dashboardLogo, styles.dashboardLogoPlaceholder]}>
+                        <MaterialIcons name="storefront" size={26} color={theme.colors.primary} />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
+                      <TouchableOpacity onPress={() => navigation.navigate('BusinessProfile', { businessId: business._id })}>
+                        <MaterialIcons name="visibility" size={24} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.categoryText}>{business.category}</Text>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.categoryText}>{business.category}</Text>
 
               <View style={styles.shopStatusRow}>
                 <Text style={styles.shopStatusText}>
@@ -242,6 +264,47 @@ const styles = StyleSheet.create({
   mainCard: {
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
+    overflow: 'hidden',
+  },
+  cardCoverContainer: {
+    height: 110,
+    marginHorizontal: -theme.spacing.lg,
+    marginTop: -theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    borderTopLeftRadius: theme.radii.lg,
+    borderTopRightRadius: theme.radii.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surfaceHighlight,
+  },
+  cardCoverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardContentWrapper: {
+    width: '100%',
+  },
+  cardHeaderWithLogo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.md,
+  },
+  dashboardLogoContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+  },
+  dashboardLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  dashboardLogoPlaceholder: {
+    backgroundColor: theme.colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardHeader: {
     flexDirection: 'row',

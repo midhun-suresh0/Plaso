@@ -9,6 +9,7 @@ const uploadDirs = [
   'public/uploads/profiles',
   'public/uploads/stories',
   'public/uploads/listings',
+  'public/uploads/businesses',
 ];
 uploadDirs.forEach(dir => {
   const fullPath = path.join(process.cwd(), dir);
@@ -28,6 +29,8 @@ const storage = multer.diskStorage({
       dest += 'stories';
     } else if (file.fieldname === 'images') {
       dest += 'listings';
+    } else if (file.fieldname === 'logo' || file.fieldname === 'coverImage' || file.fieldname === 'businessLogo' || file.fieldname === 'businessCover') {
+      dest += 'businesses';
     }
     cb(null, dest);
   },

@@ -16,6 +16,7 @@ import { ListingCard } from '../components/ListingCard';
 import { reviewApi } from '../services/api/reviewApi';
 import { Review, ReviewStats } from '../types/review';
 import { storyApi } from '../services/api/storyApi';
+import { getImageUrl } from '../utils';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'BusinessProfile'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -135,8 +136,12 @@ const BusinessProfileScreen = () => {
         
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          {business.coverImage ? (
-            <Image source={{ uri: business.coverImage }} style={styles.coverImage} />
+          {business.coverImage && getImageUrl(business.coverImage) ? (
+            <Image 
+              source={{ uri: getImageUrl(business.coverImage) }} 
+              style={styles.coverImage} 
+              resizeMode="cover"
+            />
           ) : (
             <View style={[styles.coverImage, styles.placeholderCover]} />
           )}
@@ -156,8 +161,8 @@ const BusinessProfileScreen = () => {
                 }}
                 style={{ borderWidth: 3, borderColor: theme.colors.primary, borderRadius: 50, padding: 2 }}
               >
-                {business.logo ? (
-                  <Image source={{ uri: business.logo }} style={styles.logo} />
+                {business.logo && getImageUrl(business.logo) ? (
+                  <Image source={{ uri: getImageUrl(business.logo) }} style={styles.logo} />
                 ) : (
                   <View style={[styles.logo, styles.placeholderLogo]}>
                     <MaterialIcons name="storefront" size={40} color={theme.colors.primary} />
@@ -166,8 +171,8 @@ const BusinessProfileScreen = () => {
               </TouchableOpacity>
             ) : (
               <>
-                {business.logo ? (
-                  <Image source={{ uri: business.logo }} style={styles.logo} />
+                {business.logo && getImageUrl(business.logo) ? (
+                  <Image source={{ uri: getImageUrl(business.logo) }} style={styles.logo} />
                 ) : (
                   <View style={[styles.logo, styles.placeholderLogo]}>
                     <MaterialIcons name="storefront" size={40} color={theme.colors.primary} />

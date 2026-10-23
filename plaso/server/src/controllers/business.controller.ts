@@ -11,7 +11,29 @@ export class BusinessController {
   static async createBusiness(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.user!.userId;
-      const business = await BusinessService.createBusiness(ownerId, req.body);
+      const data = { ...req.body };
+
+      // Handle uploaded files if present
+      if (req.files) {
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (files.logo && files.logo[0]) {
+          data.logo = `/uploads/businesses/${files.logo[0].filename}`;
+        }
+        if (files.coverImage && files.coverImage[0]) {
+          data.coverImage = `/uploads/businesses/${files.coverImage[0].filename}`;
+        }
+      }
+
+      // If location was stringified in FormData, parse it
+      if (typeof data.location === 'string') {
+        try {
+          data.location = JSON.parse(data.location);
+        } catch {
+          // ignore
+        }
+      }
+
+      const business = await BusinessService.createBusiness(ownerId, data);
       res.status(HttpStatus.CREATED).json({ success: true, data: business });
     } catch (error) {
       next(error);
@@ -36,6 +58,26 @@ export class BusinessController {
         res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'businessId is required' });
         return;
       }
+
+      // Handle uploaded files if present
+      if (req.files) {
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (files.logo && files.logo[0]) {
+          updateData.logo = `/uploads/businesses/${files.logo[0].filename}`;
+        }
+        if (files.coverImage && files.coverImage[0]) {
+          updateData.coverImage = `/uploads/businesses/${files.coverImage[0].filename}`;
+        }
+      }
+
+      if (typeof updateData.location === 'string') {
+        try {
+          updateData.location = JSON.parse(updateData.location);
+        } catch {
+          // ignore
+        }
+      }
+
       const business = await BusinessService.updateBusiness(ownerId, businessId, updateData);
       res.status(HttpStatus.OK).json({ success: true, data: business });
     } catch (error) {

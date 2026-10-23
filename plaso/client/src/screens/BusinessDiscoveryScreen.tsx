@@ -11,6 +11,7 @@ import { businessDiscoveryApi } from '../services/businessDiscoveryApi';
 import { BUSINESS_CATEGORIES, getCategoryIcon } from '../constants/businessCategories';
 import { useAuth } from '../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import { getImageUrl } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -99,8 +100,8 @@ const BusinessDiscoveryScreen = () => {
     >
       <PlasoCard style={styles.businessCard}>
         <View style={styles.businessHeader}>
-          {item.logo ? (
-            <Image source={{ uri: item.logo }} style={styles.businessLogo} />
+          {item.logo && getImageUrl(item.logo) ? (
+            <Image source={{ uri: getImageUrl(item.logo) }} style={styles.businessLogo} />
           ) : (
             <View style={[styles.businessLogo, styles.placeholderLogo]}>
               <MaterialIcons name="storefront" size={24} color={theme.colors.primary} />
